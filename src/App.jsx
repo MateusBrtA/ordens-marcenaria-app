@@ -5,97 +5,105 @@ import { Textarea } from '@/components/ui/textarea.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Checkbox } from '@/components/ui/checkbox.jsx'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog.jsx'
-import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X } from 'lucide-react'
+import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut } from 'lucide-react'
 import { exportToExcel } from './utils/excelExport.js'
 import './App.css'
 
+import { useAuth } from './contexts/AuthContext'
+import { usePermissions } from './hooks/usePermissions'
+import { useOrdens } from './hooks/useOrdens'
+import { useMarceneiros } from './hooks/useMarceneiros'
+import { useMateriais } from './hooks/useMateriais'
+
+import AddOrderModal from './components/ordens/AddOrderModal'
+import ManageCarpenterModal from './components/marceneiros/ManageCarpenterModal'
+import ManageMaterialsModal from './components/materiais/ManageMaterialsModal'
+import OrderMaterialsModal from './components/ordens/OrderMaterialsModal'
+import HistoricoModal from './components/historico/HistoricoModal'
+
 function App() {
-  const [orders, setOrders] = useState(() => {
-    const savedOrders = localStorage.getItem("orders")
-    return savedOrders ? JSON.parse(savedOrders) : [
-      {
-        id: 'OS-001',
-        description: 'Mesa de jantar em madeira maciça',
-        entryDate: '2025-06-20',
-        exitDate: '2025-06-25',
-        carpenter: 'Jadir',
-        status: 'recebida',
-        materials: [
-          { id: 1, description: 'Madeira de carvalho', quantity: 5 },
-          { id: 2, description: 'Parafusos', quantity: 20 }
-        ]
-      }
-    ]
-  })
-  const [carpenters, setCarpenters] = useState(() => {
-    const savedCarpenters = localStorage.getItem("carpenters")
-    return savedCarpenters ? JSON.parse(savedCarpenters) : ['Jadir']
-  })
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCarpenter, setSelectedCarpenter] = useState('Todos')
+  const { user, logout } = useAuth()
+  const { 
+    isAdmin, 
+    isMarceneiro, 
+    isVisitante, 
+    canManageOrders, 
+    canEditOrders, 
+    canDeleteOrders, 
+    canManageMaterials, 
+    canManageMarceneiros, 
+    canViewHistory 
+  } = usePermissions()
+
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedCarpenterFilter, setSelectedCarpenterFilter] = useState("Todos")
   const [statusFilters, setStatusFilters] = useState({
-    atrasada: true,
-    paraHoje: true,
-    emProcesso: true,
-    recebida: true,
-    concluida: true
+    Pendente: true,
+    "Em Andamento": true,
+    Concluída: true,
+    Atrasada: true, // Adicionado para o backend
+    "Para Hoje": true // Adicionado para o backend
   })
-  const [viewMode, setViewMode] = useState('cards')
+  const [viewMode, setViewMode] = useState("cards")
+
   const [showAddOrderModal, setShowAddOrderModal] = useState(false)
   const [showManageCarpenterModal, setShowManageCarpenterModal] = useState(false)
-  const [showMaterialsModal, setShowMaterialsModal] = useState(false)
+  const [showManageMaterialsModal, setShowManageMaterialsModal] = useState(false)
+  const [showOrderMaterialsModal, setShowOrderMaterialsModal] = useState(false)
+  const [showHistoricoModal, setShowHistoricoModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
 
+  // Hooks de dados
+  const { ordens, loading: loadingOrdens, error: errorOrdens, refetch: refetchOrdens, createOrdem, updateOrdem, deleteOrdem } = useOrdens({
+    status: Object.keys(statusFilters).filter(key => statusFilters[key]).join(","),
+    marceneiro_id: selectedCarpenterFilter !== "Todos" ? selectedCarpenterFilter : undefined,
+    numero_ordem: searchTerm || undefined
+  })
+  const { marceneiros, loading: loadingMarceneiros, error: errorMarceneiros, refetch: refetchMarceneiros } = useMarceneiros()
+  const { materiais, loading: loadingMateriais, error: errorMateriais, refetch: refetchMateriais } = useMateriais()
+
   const statusColumns = [
-    { key: 'atrasada', title: 'Atrasada', color: 'bg-red-500' },
-    { key: 'paraHoje', title: 'Para Hoje', color: 'bg-orange-400' },
-    { key: 'emProcesso', title: 'Em Processo', color: 'bg-yellow-400' },
-    { key: 'recebida', title: 'Recebida', color: 'bg-blue-400' },
-    { key: 'concluida', title: 'Concluída', color: 'bg-gray-500' }
+    { key: 'Atrasada', title: 'Atrasada', color: 'bg-red-500' },
+    { key: 'Para Hoje', title: 'Para Hoje', color: 'bg-orange-400' },
+    { key: 'Em Andamento', title: 'Em Processo', color: 'bg-yellow-400' },
+    { key: 'Pendente', title: 'Pendente', color: 'bg-blue-400' },
+    { key: 'Concluída', title: 'Concluída', color: 'bg-gray-500' }
   ]
 
-  // Função para atualizar status automaticamente baseado na data
-  const updateOrderStatus = (order) => {
-    if (order.status === 'concluida') return order.status
+  // Função para atualizar status automaticamente baseado na data (mantida para compatibilidade visual, mas o backend já faz isso)
+  const updateOrderStatusFrontend = (order) => {
+    if (order.status === 'Concluída') return order.status
 
     const today = new Date()
-    const exitDate = new Date(order.exitDate)
+    const exitDate = new Date(order.data_entrega)
 
     today.setHours(0, 0, 0, 0)
     exitDate.setHours(0, 0, 0, 0)
 
     if (exitDate < today) {
-      return 'atrasada'
+      return 'Atrasada'
     } else if (exitDate.getTime() === today.getTime()) {
-      return 'paraHoje'
+      return 'Para Hoje'
     }
 
     return order.status
   }
 
-  // Atualizar status das ordens automaticamente
-  useEffect(() => {
-    setOrders(prevOrders =>
-      prevOrders.map(order => ({
-        ...order,
-        status: updateOrderStatus(order)
-      }))
-    )
-  }, [])
+  // Ajustar ordens para exibição no frontend (mapear para o formato antigo se necessário)
+  const mappedOrders = ordens.map(order => ({
+    ...order,
+    id: order.numero_ordem, // Usar numero_ordem como ID para compatibilidade com o frontend antigo
+    description: order.descricao,
+    entryDate: order.data_criacao ? new Date(order.data_criacao).toISOString().split('T')[0] : '',
+    exitDate: order.data_entrega ? new Date(order.data_entrega).toISOString().split('T')[0] : '',
+    carpenter: order.marceneiro ? order.marceneiro.nome : 'Não atribuído',
+    status: updateOrderStatusFrontend(order), // Atualiza status para exibição no frontend
+    materials: order.materiais // Já vem do backend
+  }))
 
-  // Persistir ordens no localStorage
-  useEffect(() => {
-    localStorage.setItem("orders", JSON.stringify(orders))
-  }, [orders])
-
-  // Persistir marceneiros no localStorage
-  useEffect(() => {
-    localStorage.setItem("carpenters", JSON.stringify(carpenters))
-  }, [carpenters])
-
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = mappedOrders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCarpenter = selectedCarpenter === 'Todos' || order.carpenter === selectedCarpenter
+    const matchesCarpenter = selectedCarpenterFilter === 'Todos' || order.marceneiro_id === parseInt(selectedCarpenterFilter)
     const matchesStatus = statusFilters[order.status]
     return matchesSearch && matchesCarpenter && matchesStatus
   })
@@ -104,49 +112,79 @@ function App() {
     return filteredOrders.filter(order => order.status === status)
   }
 
-  const handleAddOrder = (newOrder) => {
-    const orderWithUpdatedStatus = {
-      ...newOrder,
-      status: updateOrderStatus(newOrder)
+  const handleAddOrder = async (newOrder) => {
+    const result = await createOrdem({
+      numero_ordem: newOrder.id,
+      cliente: newOrder.cliente || 'N/A',
+      descricao: newOrder.description,
+      data_entrega: newOrder.exitDate,
+      status: newOrder.status,
+      marceneiro_id: newOrder.marceneiro_id,
+      observacoes: newOrder.observacoes,
+      materiais: newOrder.materials // Passar materiais para o backend
+    })
+    if (result.success) {
+      setShowAddOrderModal(false)
+      refetchOrdens()
+    } else {
+      alert(result.message)
     }
-    setOrders(prev => [...prev, orderWithUpdatedStatus])
   }
 
-  const handleUpdateOrderStatus = (orderId, newStatus) => {
-    setOrders(prev => prev.map(order =>
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ))
-  }
-
-  const handleUpdateOrder = (updatedOrder) => {
-    const orderWithUpdatedStatus = {
-      ...updatedOrder,
-      status: updateOrderStatus(updatedOrder)
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    const orderToUpdate = ordens.find(o => o.numero_ordem === orderId)
+    if (orderToUpdate) {
+      const result = await updateOrdem(orderToUpdate.id, { status: newStatus })
+      if (result.success) {
+        refetchOrdens()
+      } else {
+        alert(result.message)
+      }
     }
-    setOrders(prev => prev.map(order =>
-      order.id === updatedOrder.id ? orderWithUpdatedStatus : order
-    ))
   }
 
-  const handleDeleteOrder = (orderId) => {
+  const handleUpdateOrder = async (updatedOrder) => {
+    const orderToUpdate = ordens.find(o => o.numero_ordem === updatedOrder.id)
+    if (orderToUpdate) {
+      const result = await updateOrdem(orderToUpdate.id, {
+        cliente: updatedOrder.cliente,
+        descricao: updatedOrder.description,
+        data_entrega: updatedOrder.exitDate,
+        status: updatedOrder.status,
+        marceneiro_id: updatedOrder.marceneiro_id,
+        observacoes: updatedOrder.observacoes
+      })
+      if (result.success) {
+        refetchOrdens()
+      } else {
+        alert(result.message)
+      }
+    }
+  }
+
+  const handleDeleteOrder = async (orderId) => {
     if (confirm('Tem certeza que deseja excluir esta ordem?')) {
-      setOrders(prev => prev.filter(order => order.id !== orderId))
+      const orderToDelete = ordens.find(o => o.numero_ordem === orderId)
+      if (orderToDelete) {
+        const result = await deleteOrdem(orderToDelete.id)
+        if (result.success) {
+          refetchOrdens()
+        } else {
+          alert(result.message)
+        }
+      }
     }
   }
 
-  const handleAddCarpenter = (name) => {
-    if (!carpenters.includes(name)) {
-      setCarpenters(prev => [...prev, name])
-    }
-  }
-
-  const handleRemoveCarpenter = (name) => {
-    if (confirm(`Tem certeza que deseja remover o marceneiro "${name}"?`)) {
-      setCarpenters(prev => prev.filter(c => c !== name))
-      // Remover o marceneiro das ordens
-      setOrders(prev => prev.map(order =>
-        order.carpenter === name ? { ...order, carpenter: '' } : order
-      ))
+  const handleUpdateCarpenterInOrder = async (orderId, newCarpenterId) => {
+    const orderToUpdate = ordens.find(o => o.numero_ordem === orderId)
+    if (orderToUpdate) {
+      const result = await updateOrdem(orderToUpdate.id, { marceneiro_id: newCarpenterId })
+      if (result.success) {
+        refetchOrdens()
+      } else {
+        alert(result.message)
+      }
     }
   }
 
@@ -160,14 +198,16 @@ function App() {
     <div className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow mb-3">
       <div className="flex justify-between items-start mb-3">
         <h3 className="font-bold text-lg">{order.id}</h3>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleDeleteOrder(order.id)}
-          className="text-red-500 hover:text-red-700"
-        >
-          <Trash2 size={16} />
-        </Button>
+        {canDeleteOrders && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDeleteOrder(order.id)}
+            className="text-red-500 hover:text-red-700"
+          >
+            <Trash2 size={16} />
+          </Button>
+        )}
       </div>
 
       <p className="text-gray-700 text-sm mb-3">{order.description}</p>
@@ -176,16 +216,17 @@ function App() {
         <div>
           <strong>Encarregado:</strong>
           <Select
-            value={order.carpenter || "none"}
-            onValueChange={(value) => handleUpdateOrder({ ...order, carpenter: value === "none" ? null : value })}
+            value={order.marceneiro_id || "none"}
+            onValueChange={(value) => handleUpdateCarpenterInOrder(order.id, value === "none" ? null : parseInt(value))}
+            disabled={!canEditOrders} // Desabilita se não tiver permissão
           >
             <SelectTrigger className="h-8 text-sm w-40 inline-flex">
               <SelectValue placeholder="(Nenhum)" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">(Nenhum)</SelectItem>
-              {carpenters.map(carpenter => (
-                <SelectItem key={carpenter} value={carpenter}>{carpenter}</SelectItem>
+              {marceneiros.map(carpenter => (
+                <SelectItem key={carpenter.id} value={carpenter.id.toString()}>{carpenter.nome}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -197,7 +238,7 @@ function App() {
           <strong>Saída:</strong> {formatDate(order.exitDate)}
         </div>
         <div>
-          <strong>Materiais:</strong> {order.materials?.length || 0} itens
+          <strong>Materiais:</strong> {order.materiais?.length || 0} itens
         </div>
       </div>
 
@@ -205,6 +246,7 @@ function App() {
         <Select
           value={order.status}
           onValueChange={(value) => handleUpdateOrderStatus(order.id, value)}
+          disabled={!canEditOrders} // Desabilita se não tiver permissão
         >
           <SelectTrigger className="h-8 text-sm">
             <SelectValue />
@@ -221,7 +263,7 @@ function App() {
         <Button
           onClick={() => {
             setSelectedOrder(order)
-            setShowMaterialsModal(true)
+            setShowOrderMaterialsModal(true)
           }}
           className="w-full bg-blue-500 hover:bg-blue-600 text-white h-8 text-sm"
         >
@@ -231,42 +273,69 @@ function App() {
     </div>
   )
 
+  if (loadingOrdens || loadingMarceneiros || loadingMateriais) {
+    return <div className="flex justify-center items-center min-h-screen">Carregando dados...</div>
+  }
+
+  if (errorOrdens || errorMarceneiros || errorMateriais) {
+    return <div className="flex justify-center items-center min-h-screen text-red-500">Erro ao carregar dados: {errorOrdens || errorMarceneiros || errorMateriais}</div>
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Ordens de Serviço</h1>
+        <p className="text-gray-600 mb-4">Bem-vindo, {user?.username} ({user?.tipo_acesso})!</p>
 
         {/* Action Buttons */}
         <div className="flex justify-center gap-4 mb-6">
+          {canManageOrders && (
+            <Button
+              onClick={() => setShowAddOrderModal(true)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+            >
+              <Plus size={20} />
+              Adicionar Ordem
+            </Button>
+          )}
+          
+          {canManageMarceneiros && (
+            <Button
+              onClick={() => setShowManageCarpenterModal(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+            >
+              <Users size={20} />
+              Gerenciar Marceneiros
+            </Button>
+          )}
+
+          {canManageMaterials && (
+            <Button
+              onClick={() => setShowManageMaterialsModal(true)}
+              className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+            >
+              <FileSpreadsheet size={20} />
+              Gerenciar Materiais
+            </Button>
+          )}
+
+          {canViewHistory && (
+            <Button
+              onClick={() => setShowHistoricoModal(true)}
+              className="bg-gray-700 hover:bg-gray-800 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+            >
+              <List size={20} />
+              Histórico
+            </Button>
+          )}
+
           <Button
-            onClick={() => setShowAddOrderModal(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+            onClick={logout}
+            className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
           >
-            <Plus size={20} />
-            Adicionar Ordem
-          </Button>
-          <Button
-            onClick={() => setShowManageCarpenterModal(true)}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
-          >
-            <Users size={20} />
-            Gerenciar Marceneiros
-          </Button>
-          <Button
-            onClick={() => {
-              try {
-                exportToExcel(orders, carpenters)
-                alert('Arquivo Excel exportado com sucesso!')
-              } catch (error) {
-                alert('Erro ao exportar: ' + error.message)
-                console.error('Erro na exportação:', error)
-              }
-            }}
-            className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
-          >
-            <FileSpreadsheet size={20} />
-            Exportar Excel
+            <LogOut size={20} />
+            Sair
           </Button>
         </div>
       </div>
@@ -292,14 +361,14 @@ function App() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Filtrar por Encarregado
           </label>
-          <Select value={selectedCarpenter} onValueChange={setSelectedCarpenter}>
+          <Select value={selectedCarpenterFilter} onValueChange={setSelectedCarpenterFilter}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Todos">Todos</SelectItem>
-              {carpenters.map(carpenter => (
-                <SelectItem key={carpenter} value={carpenter}>{carpenter}</SelectItem>
+              {marceneiros.map(carpenter => (
+                <SelectItem key={carpenter.id} value={carpenter.id.toString()}>{carpenter.nome}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -396,6 +465,7 @@ function App() {
                     <Select
                       value={order.status}
                       onValueChange={(value) => handleUpdateOrderStatus(order.id, value)}
+                      disabled={!canEditOrders}
                     >
                       <SelectTrigger className="h-8 text-sm">
                         <SelectValue />
@@ -415,20 +485,22 @@ function App() {
                       size="sm"
                       onClick={() => {
                         setSelectedOrder(order)
-                        setShowMaterialsModal(true)
+                        setShowOrderMaterialsModal(true)
                       }}
                       className="text-blue-500 hover:text-blue-700"
                     >
                       Materiais
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteOrder(order.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 size={14} />
-                    </Button>
+                    {canDeleteOrders && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteOrder(order.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))
@@ -442,432 +514,38 @@ function App() {
         isOpen={showAddOrderModal}
         onClose={() => setShowAddOrderModal(false)}
         onAddOrder={handleAddOrder}
-        carpenters={carpenters}
+        marceneiros={marceneiros}
+        materiais={materiais}
       />
 
       <ManageCarpenterModal
         isOpen={showManageCarpenterModal}
         onClose={() => setShowManageCarpenterModal(false)}
-        carpenters={carpenters}
-        onAddCarpenter={handleAddCarpenter}
-        onRemoveCarpenter={handleRemoveCarpenter}
-        orders={orders}
+        marceneiros={marceneiros}
+        refetchMarceneiros={refetchMarceneiros}
       />
 
-      <MaterialsModal
-        isOpen={showMaterialsModal}
-        onClose={() => setShowMaterialsModal(false)}
+      <ManageMaterialsModal
+        isOpen={showManageMaterialsModal}
+        onClose={() => setShowManageMaterialsModal(false)}
+        materiais={materiais}
+        refetchMateriais={refetchMateriais}
+      />
+
+      <OrderMaterialsModal
+        isOpen={showOrderMaterialsModal}
+        onClose={() => setShowOrderMaterialsModal(false)}
         order={selectedOrder}
-        onUpdateOrder={handleUpdateOrder}
+        materiais={materiais}
+        refetchOrdens={refetchOrdens}
+      />
+
+      <HistoricoModal
+        isOpen={showHistoricoModal}
+        onClose={() => setShowHistoricoModal(false)}
       />
     </div>
   )
 }
 
-// Modal para adicionar ordem
-function AddOrderModal({ isOpen, onClose, onAddOrder, carpenters }) {
-  const [formData, setFormData] = useState({
-    id: '',
-    description: '',
-    entryDate: '',
-    exitDate: '',
-    carpenter: 'none',
-    materials: []
-  })
-  const [newMaterial, setNewMaterial] = useState({ description: '', quantity: 1 })
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!formData.id || !formData.description || !formData.entryDate || !formData.exitDate) {
-      alert('Por favor, preencha todos os campos obrigatórios.')
-      return
-    }
-
-    const order = {
-      ...formData,
-      status: 'recebida',
-      createdAt: new Date().toISOString()
-    }
-
-    onAddOrder(order)
-    setFormData({
-      id: '',
-      description: '',
-      entryDate: '',
-      exitDate: '',
-      carpenter: '',
-      materials: []
-    })
-    onClose()
-  }
-
-  const addMaterial = () => {
-    if (newMaterial.description.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        materials: [...prev.materials, { ...newMaterial, id: Date.now() }]
-      }))
-      setNewMaterial({ description: '', quantity: 1 })
-    }
-  }
-
-  const removeMaterial = (materialId) => {
-    setFormData(prev => ({
-      ...prev,
-      materials: prev.materials.filter(m => m.id !== materialId)
-    }))
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Adicionar Nova Ordem</DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Nº da Ordem *</label>
-            <Input
-              type="text"
-              value={formData.id}
-              onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
-              placeholder="Ex: OS-123"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Descrição do Serviço *</label>
-            <Textarea
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Descreva o serviço a ser realizado..."
-              rows={4}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Data de Entrada *</label>
-              <Input
-                type="date"
-                value={formData.entryDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, entryDate: e.target.value }))}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Estimativa de Saída *</label>
-              <Input
-                type="date"
-                value={formData.exitDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, exitDate: e.target.value }))}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Encarregado (Opcional)</label>
-            {/* 1. O defaultValue foi mantido como "none". Ele define qual item 
-       será selecionado inicialmente.
-  */}
-            <Select defaultValue="none" onValueChange={(value) => setFormData(prev => ({ ...prev, carpenter: value === "none" ? null : value }))}>
-              <SelectTrigger>
-                {/* O placeholder é exibido quando nenhum valor está selecionado */}
-                <SelectValue placeholder="(Nenhum)" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* 2. O valor do SelectItem foi alterado de "" para "none".
-           Agora ele é um valor válido.
-      */}
-                <SelectItem value="none">(Nenhum)</SelectItem>
-                {carpenters.map(carpenter => (
-                  <SelectItem key={carpenter} value={carpenter}>{carpenter}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Materiais Iniciais</label>
-
-            {/* Lista de materiais */}
-            {formData.materials.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {formData.materials.map(material => (
-                  <div key={material.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                    <span>{material.description} (Qtd: {material.quantity})</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeMaterial(material.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <X size={16} />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Adicionar novo material */}
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Descrição do material"
-                value={newMaterial.description}
-                onChange={(e) => setNewMaterial(prev => ({ ...prev, description: e.target.value }))}
-                className="flex-1"
-              />
-              <Input
-                type="number"
-                min="1"
-                value={newMaterial.quantity}
-                onChange={(e) => setNewMaterial(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                className="w-20"
-              />
-              <Button type="button" onClick={addMaterial} size="sm">
-                <Plus size={16} />
-              </Button>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-              Salvar Ordem
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// Modal para gerenciar marceneiros
-function ManageCarpenterModal({ isOpen, onClose, carpenters, onAddCarpenter, onRemoveCarpenter, orders }) {
-  const [newCarpenterName, setNewCarpenterName] = useState('')
-
-  const handleAddCarpenter = () => {
-    if (newCarpenterName.trim()) {
-      onAddCarpenter(newCarpenterName.trim())
-      setNewCarpenterName('')
-    }
-  }
-
-  const getCarpenterStats = (carpenterName) => {
-    const carpenterOrders = orders.filter(order => order.carpenter === carpenterName)
-    const total = carpenterOrders.length
-    const statusCounts = {
-      atrasada: carpenterOrders.filter(o => o.status === 'atrasada').length,
-      paraHoje: carpenterOrders.filter(o => o.status === 'paraHoje').length,
-      emProcesso: carpenterOrders.filter(o => o.status === 'emProcesso').length,
-      recebida: carpenterOrders.filter(o => o.status === 'recebida').length,
-      concluida: carpenterOrders.filter(o => o.status === 'concluida').length
-    }
-    return { total, statusCounts }
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Gerenciar Marceneiros</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Adicionar novo marceneiro */}
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder="Nome do novo marceneiro"
-              value={newCarpenterName}
-              onChange={(e) => setNewCarpenterName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddCarpenter()}
-              className="flex-1"
-            />
-            <Button
-              onClick={handleAddCarpenter}
-              className="bg-green-500 hover:bg-green-600"
-            >
-              Adicionar
-            </Button>
-          </div>
-
-          {/* Lista de marceneiros */}
-          <div className="space-y-4">
-            {carpenters.map(carpenter => {
-              const stats = getCarpenterStats(carpenter)
-              return (
-                <div key={carpenter} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-lg">{carpenter}</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onRemoveCarpenter(carpenter)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium">Total de ordens: </span>
-                      <span className="text-blue-600">{stats.total}</span>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span>Atrasada:</span>
-                        <span className="text-red-600">{stats.statusCounts.atrasada}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Para Hoje:</span>
-                        <span className="text-orange-600">{stats.statusCounts.paraHoje}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Em Processo:</span>
-                        <span className="text-yellow-600">{stats.statusCounts.emProcesso}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Recebida:</span>
-                        <span className="text-blue-600">{stats.statusCounts.recebida}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Concluída:</span>
-                        <span className="text-gray-600">{stats.statusCounts.concluida}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {carpenters.length === 0 && (
-            <div className="text-center text-gray-500 py-8">
-              Nenhum marceneiro cadastrado ainda.
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button onClick={onClose}>Fechar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// Modal para gerenciar materiais
-function MaterialsModal({ isOpen, onClose, order, onUpdateOrder }) {
-  const [editingOrder, setEditingOrder] = useState(null)
-  const [newMaterial, setNewMaterial] = useState({ description: '', quantity: 1 })
-
-  useEffect(() => {
-    if (order) {
-      setEditingOrder({ ...order })
-    }
-  }, [order])
-
-  const addMaterial = () => {
-    if (newMaterial.description.trim()) {
-      setEditingOrder(prev => ({
-        ...prev,
-        materials: [...(prev.materials || []), { ...newMaterial, id: Date.now() }]
-      }))
-      setNewMaterial({ description: '', quantity: 1 })
-    }
-  }
-
-  const removeMaterial = (materialId) => {
-    setEditingOrder(prev => ({
-      ...prev,
-      materials: prev.materials.filter(m => m.id !== materialId)
-    }))
-  }
-
-  const saveMaterials = () => {
-    onUpdateOrder(editingOrder)
-    onClose()
-    setEditingOrder(null)
-  }
-
-  if (!editingOrder) return null
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Materiais da Ordem #{editingOrder.id}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Lista de materiais */}
-          {editingOrder?.materials?.length > 0 ? (
-            <div className="space-y-2">
-              {editingOrder.materials.map(material => (
-                <div key={material.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                  <span>{material.description} (Qtd: {material.quantity})</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeMaterial(material.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-4">Nenhum material adicionado ainda.</p>
-          )}
-
-          {/* Adicionar novo material */}
-          <div>
-            <h4 className="font-medium mb-2">Adicionar Novo Material</h4>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Descrição do material"
-                value={newMaterial.description}
-                onChange={(e) => setNewMaterial(prev => ({ ...prev, description: e.target.value }))}
-                className="flex-1"
-              />
-              <Input
-                type="number"
-                min="1"
-                value={newMaterial.quantity}
-                onChange={(e) => setNewMaterial(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                className="w-20"
-              />
-              <Button onClick={addMaterial} className="bg-blue-500 hover:bg-blue-600">
-                Adicionar
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button onClick={saveMaterials} className="bg-blue-500 hover:bg-blue-600">
-            Salvar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export default App
-
