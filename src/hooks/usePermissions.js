@@ -32,3 +32,5 @@ export const usePermissions = () => {
     canViewHistory: hasPermission("can_view_history"),
   };
 };
+
+

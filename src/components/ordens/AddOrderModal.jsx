@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 const AddOrderModal = ({ isOpen, onClose, onAddOrder, marceneiros, materiais }) => {
   const [numeroOrdem, setNumeroOrdem] = useState('');
@@ -18,7 +19,7 @@ const AddOrderModal = ({ isOpen, onClose, onAddOrder, marceneiros, materiais }) 
 
   useEffect(() => {
     if (!isOpen) {
-      // Reset form when modal closes
+      // Resetar estados ao fechar o modal
       setNumeroOrdem('');
       setCliente('');
       setDescricao('');
@@ -32,24 +33,24 @@ const AddOrderModal = ({ isOpen, onClose, onAddOrder, marceneiros, materiais }) 
   }, [isOpen]);
 
   const handleAddMaterial = (material) => {
-    if (!selectedMaterials.some(m => m.id === material.id)) {
+    if (!selectedMaterials.find(m => m.id === material.id)) {
       setSelectedMaterials([...selectedMaterials, { ...material, quantidade: 1 }]);
     }
   };
 
-  const handleUpdateMaterialQuantity = (id, quantidade) => {
-    setSelectedMaterials(selectedMaterials.map(m => 
-      m.id === id ? { ...m, quantidade: parseInt(quantidade) || 0 } : m
-    ));
+  const handleRemoveMaterial = (materialId) => {
+    setSelectedMaterials(selectedMaterials.filter(m => m.id !== materialId));
   };
 
-  const handleRemoveMaterial = (id) => {
-    setSelectedMaterials(selectedMaterials.filter(m => m.id !== id));
+  const handleQuantityChange = (materialId, quantidade) => {
+    setSelectedMaterials(selectedMaterials.map(m => 
+      m.id === materialId ? { ...m, quantidade: parseInt(quantidade) || 0 } : m
+    ));
   };
 
   const handleSubmit = () => {
     const newOrder = {
-      id: numeroOrdem, // Usado como numero_ordem no backend
+      id: numeroOrdem,
       cliente,
       description: descricao,
       exitDate: dataEntrega,
@@ -73,23 +74,23 @@ const AddOrderModal = ({ isOpen, onClose, onAddOrder, marceneiros, materiais }) 
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="numeroOrdem" className="text-right">Nº da Ordem</label>
-            <Input id="numeroOrdem" value={numeroOrdem} onChange={(e) => setNumeroOrdem(e.target.value)} className="col-span-3" required />
+            <Label htmlFor="numeroOrdem" className="text-right">Nº da Ordem</Label>
+            <Input id="numeroOrdem" value={numeroOrdem} onChange={(e) => setNumeroOrdem(e.target.value)} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="cliente" className="text-right">Cliente</label>
+            <Label htmlFor="cliente" className="text-right">Cliente</Label>
             <Input id="cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="descricao" className="text-right">Descrição</label>
-            <Textarea id="descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} className="col-span-3" required />
+            <Label htmlFor="descricao" className="text-right">Descrição</Label>
+            <Textarea id="descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="dataEntrega" className="text-right">Data de Entrega</label>
-            <Input type="date" id="dataEntrega" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} className="col-span-3" required />
+            <Label htmlFor="dataEntrega" className="text-right">Data de Entrega</Label>
+            <Input type="date" id="dataEntrega" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="status" className="text-right">Status</label>
+            <Label htmlFor="status" className="text-right">Status</Label>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Selecione o Status" />
@@ -102,67 +103,68 @@ const AddOrderModal = ({ isOpen, onClose, onAddOrder, marceneiros, materiais }) 
             </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="marceneiro" className="text-right">Marceneiro</label>
+            <Label htmlFor="marceneiro" className="text-right">Marceneiro</Label>
             <Select value={marceneiroId} onValueChange={setMarceneiroId}>
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Selecione o Marceneiro" />
               </SelectTrigger>
               <SelectContent>
-                {marceneiros.map(carpenter => (
-                  <SelectItem key={carpenter.id} value={carpenter.id.toString()}>{carpenter.nome}</SelectItem>
+                {marceneiros.map(m => (
+                  <SelectItem key={m.id} value={m.id.toString()}>{m.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="observacoes" className="text-right">Observações</label>
+            <Label htmlFor="observacoes" className="text-right">Observações</Label>
             <Textarea id="observacoes" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} className="col-span-3" />
           </div>
 
-          {/* Gerenciamento de Materiais na Ordem */}
-          <div className="col-span-4">
-            <h4 className="text-lg font-semibold mb-2">Materiais da Ordem</h4>
-            <Input
-              type="text"
-              placeholder="Buscar material..."
-              value={materialSearchTerm}
-              onChange={(e) => setMaterialSearchTerm(e.target.value)}
-              className="mb-2"
-            />
-            <div className="max-h-40 overflow-y-auto border rounded p-2 mb-2">
-              {filteredMateriais.length > 0 ? (
-                filteredMateriais.map(material => (
-                  <div key={material.id} className="flex justify-between items-center py-1">
-                    <span>{material.nome} (Estoque: {material.quantidade_estoque})</span>
-                    <Button size="sm" onClick={() => handleAddMaterial(material)} disabled={selectedMaterials.some(m => m.id === material.id)}>
-                      Adicionar
-                    </Button>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500">Nenhum material encontrado.</p>
-              )}
-            </div>
-            <div className="border rounded p-2">
-              {selectedMaterials.length > 0 ? (
-                selectedMaterials.map(material => (
-                  <div key={material.id} className="flex items-center gap-2 py-1">
-                    <span>{material.nome}</span>
-                    <Input
-                      type="number"
-                      value={material.quantidade}
-                      onChange={(e) => handleUpdateMaterialQuantity(material.id, e.target.value)}
-                      className="w-20"
-                      min="1"
-                    />
-                    <Button variant="destructive" size="sm" onClick={() => handleRemoveMaterial(material.id)}>
-                      Remover
-                    </Button>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500">Nenhum material adicionado à ordem.</p>
-              )}
+          {/* Material Selection */}
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right">Materiais</Label>
+            <div className="col-span-3 space-y-2">
+              <Input 
+                placeholder="Buscar material..."
+                value={materialSearchTerm}
+                onChange={(e) => setMaterialSearchTerm(e.target.value)}
+              />
+              <div className="max-h-40 overflow-y-auto border rounded p-2">
+                {filteredMateriais.length === 0 ? (
+                  <p className="text-gray-500">Nenhum material encontrado.</p>
+                ) : (
+                  filteredMateriais.map(material => (
+                    <div key={material.id} className="flex justify-between items-center py-1">
+                      <span>{material.nome} (Estoque: {material.quantidade_estoque})</span>
+                      <Button variant="outline" size="sm" onClick={() => handleAddMaterial(material)}>
+                        Adicionar
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-4">
+                <h4 className="font-semibold mb-2">Materiais Selecionados:</h4>
+                {selectedMaterials.length === 0 ? (
+                  <p className="text-gray-500">Nenhum material selecionado.</p>
+                ) : (
+                  selectedMaterials.map(material => (
+                    <div key={material.id} className="flex items-center gap-2 mb-2 border p-2 rounded">
+                      <span className="flex-1">{material.nome}</span>
+                      <Input
+                        type="number"
+                        value={material.quantidade}
+                        onChange={(e) => handleQuantityChange(material.id, e.target.value)}
+                        className="w-20 text-center"
+                        min="1"
+                      />
+                      <Button variant="ghost" size="sm" onClick={() => handleRemoveMaterial(material.id)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
@@ -177,3 +179,5 @@ const AddOrderModal = ({ isOpen, onClose, onAddOrder, marceneiros, materiais }) 
 };
 
 export default AddOrderModal;
+
+

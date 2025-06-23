@@ -1,3 +1,4 @@
+
 import { useState, useContext, createContext, useEffect } from 'react';
 import api from '../services/api'; // Certifique-se de que o caminho para api.js está correto
 
@@ -79,3 +80,5 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+

@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import api from '../services/api';
+
+import { useState, useEffect } from (
+  "react"
+);
+import api from "../services/api";
 
 export const useMarceneiros = (filters = {}) => {
   const [marceneiros, setMarceneiros] = useState([]);
@@ -13,7 +16,7 @@ export const useMarceneiros = (filters = {}) => {
       const response = await api.get(`/api/marceneiros?${params.toString()}`);
       setMarceneiros(response.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao carregar marceneiros');
+      setError(err.response?.data?.message || "Erro ao carregar marceneiros");
     } finally {
       setLoading(false);
     }
@@ -25,13 +28,13 @@ export const useMarceneiros = (filters = {}) => {
 
   const createMarceneiro = async (marceneiroData) => {
     try {
-      const response = await api.post('/api/marceneiros', marceneiroData);
+      const response = await api.post("/api/marceneiros", marceneiroData);
       fetchMarceneiros();
       return { success: true, marceneiro: response.data.marceneiro };
     } catch (err) {
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Erro ao criar marceneiro' 
+      return {
+        success: false,
+        message: err.response?.data?.message || "Erro ao criar marceneiro",
       };
     }
   };
@@ -42,9 +45,9 @@ export const useMarceneiros = (filters = {}) => {
       fetchMarceneiros();
       return { success: true, marceneiro: response.data.marceneiro };
     } catch (err) {
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Erro ao atualizar marceneiro' 
+      return {
+        success: false,
+        message: err.response?.data?.message || "Erro ao atualizar marceneiro",
       };
     }
   };
@@ -55,9 +58,9 @@ export const useMarceneiros = (filters = {}) => {
       fetchMarceneiros();
       return { success: true };
     } catch (err) {
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Erro ao deletar marceneiro' 
+      return {
+        success: false,
+        message: err.response?.data?.message || "Erro ao deletar marceneiro",
       };
     }
   };
@@ -72,3 +75,5 @@ export const useMarceneiros = (filters = {}) => {
     deleteMarceneiro,
   };
 };
+
+

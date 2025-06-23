@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import api from '../services/api';
+
+import { useState, useEffect } from (
+  "react"
+);
+import api from "../services/api";
 
 export const useMateriais = (filters = {}) => {
   const [materiais, setMateriais] = useState([]);
@@ -13,7 +16,7 @@ export const useMateriais = (filters = {}) => {
       const response = await api.get(`/api/materiais?${params.toString()}`);
       setMateriais(response.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao carregar materiais');
+      setError(err.response?.data?.message || "Erro ao carregar materiais");
     } finally {
       setLoading(false);
     }
@@ -25,13 +28,13 @@ export const useMateriais = (filters = {}) => {
 
   const createMaterial = async (materialData) => {
     try {
-      const response = await api.post('/api/materiais', materialData);
+      const response = await api.post("/api/materiais", materialData);
       fetchMateriais();
       return { success: true, material: response.data.material };
     } catch (err) {
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Erro ao criar material' 
+      return {
+        success: false,
+        message: err.response?.data?.message || "Erro ao criar material",
       };
     }
   };
@@ -42,9 +45,9 @@ export const useMateriais = (filters = {}) => {
       fetchMateriais();
       return { success: true, material: response.data.material };
     } catch (err) {
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Erro ao atualizar material' 
+      return {
+        success: false,
+        message: err.response?.data?.message || "Erro ao atualizar material",
       };
     }
   };
@@ -55,9 +58,9 @@ export const useMateriais = (filters = {}) => {
       fetchMateriais();
       return { success: true };
     } catch (err) {
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Erro ao deletar material' 
+      return {
+        success: false,
+        message: err.response?.data?.message || "Erro ao deletar material",
       };
     }
   };
@@ -68,9 +71,9 @@ export const useMateriais = (filters = {}) => {
       fetchMateriais();
       return { success: true, material: response.data.material };
     } catch (err) {
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Erro ao atualizar estoque' 
+      return {
+        success: false,
+        message: err.response?.data?.message || "Erro ao atualizar estoque",
       };
     }
   };
@@ -86,3 +89,5 @@ export const useMateriais = (filters = {}) => {
     updateEstoque,
   };
 };
+
+
