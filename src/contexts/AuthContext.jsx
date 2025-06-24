@@ -1,84 +1,93 @@
+import { createContext, useContext, useState, useEffect } from 'react'
+import api from '../services/api.js'
 
-import { useState, useContext, createContext, useEffect } from 'react';
-import api from '../services/api'; // Certifique-se de que o caminho para api.js está correto
-
-const AuthContext = createContext();
+const AuthContext = createContext()
 
 export const useAuth = () => {
-  return useContext(AuthContext);
-};
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider')
+  }
+  return context
+}
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      checkAuth();
-    } else {
-      setLoading(false);
+    const token = localStorage.getItem('token')
+    const savedUser = localStorage.getItem('user')
+    
+    if (token && savedUser) {
+      try {
+        const userData = JSON.parse(savedUser)
+        setUser(userData)
+        
+        // Verificar se o token ainda é válido
+        api.get('/auth/me')
+          .then(response => {
+            setUser(response.data.user)
+          })
+          .catch(() => {
+            // Token inválido, fazer logout
+            logout()
+          })
+      } catch (error) {
+        logout()
+      }
     }
-  }, []);
+    
+    setLoading(false)
+  }, [])
 
-  const checkAuth = async () => {
-    try {
-      const response = await api.get('/api/auth/me');
-      setUser(response.data.usuario);
-    } catch (error) {
-      console.error('Erro ao verificar autenticação:', error);
-      localStorage.removeItem('token');
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const login = (userData) => {
+    setUser(userData)
+  }
 
-  const login = async (username, password) => {
-    try {
-      const response = await api.post('/api/auth/login', {
-        username,
-        password,
-      });
-      
-      const { token, usuario, permissions } = response.data;
-      localStorage.setItem('token', token);
-      setUser({ ...usuario, permissions });
-      
-      return { success: true, user: usuario, permissions };
-    } catch (error) {
-      console.error('Erro no login:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Erro no login' 
-      };
-    }
-  };
+  const logout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setUser(null)
+  }
 
-  const logout = async () => {
-    try {
-      await api.post('/api/auth/logout');
-    } catch (error) {
-      console.error('Erro no logout:', error);
-    } finally {
-      localStorage.removeItem('token');
-      setUser(null);
+  const hasPermission = (requiredRole) => {
+    if (!user) return false
+    
+    const roleHierarchy = {
+      'visitante': 1,
+      'marceneiro': 2,
+      'administrador': 3
     }
-  };
+    
+    const userLevel = roleHierarchy[user.role] || 0
+    const requiredLevel = roleHierarchy[requiredRole] || 0
+    
+    return userLevel >= requiredLevel
+  }
+
+  const canEdit = () => {
+    return hasPermission('marceneiro')
+  }
+
+  const canAdmin = () => {
+    return hasPermission('administrador')
+  }
 
   const value = {
     user,
     login,
     logout,
-    loading,
-    checkAuth // Adicionado para permitir re-verificação manual se necessário
-  };
+    hasPermission,
+    canEdit,
+    canAdmin,
+    loading
+  }
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
-  );
-};
-
+  )
+}
 

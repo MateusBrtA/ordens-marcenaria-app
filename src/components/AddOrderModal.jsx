@@ -65,7 +65,7 @@ export function AddOrderModal({ isOpen, onClose, onAddOrder, carpenters }) {
         <DialogHeader>
           <DialogTitle>Adicionar Nova Ordem</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Nº da Ordem *</label>
@@ -110,24 +110,57 @@ export function AddOrderModal({ isOpen, onClose, onAddOrder, carpenters }) {
             </div>
           </div>
 
+
           <div>
             <label className="block text-sm font-medium mb-2">Encarregado (Opcional)</label>
-            <Select value={formData.carpenter} onValueChange={(value) => setFormData(prev => ({ ...prev, carpenter: value }))}>
+            <Select
+              value={formData.carpenter}
+              onValueChange={(value) => {
+                const newValue = value === "none" ? "" : value;
+                setFormData(prev => ({ ...prev, carpenter: newValue }));
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="(Nenhum)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">(Nenhum)</SelectItem>
-                {carpenters.map(carpenter => (
-                  <SelectItem key={carpenter} value={carpenter}>{carpenter}</SelectItem>
-                ))}
+                {/* Item estático para a opção "Nenhum" */}
+                <SelectItem value="none">(Nenhum)</SelectItem>
+
+                {
+                  // ----- INÍCIO DO CÓDIGO DE DIAGNÓSTICO -----
+                }
+                {
+                  carpenters.map((carpenter, index) => {
+                    // Para cada item da lista, vamos imprimir o valor no console ANTES de usá-lo.
+                    console.log(`[Debug Select] Verificando Marceneiro #${index}:`, carpenter);
+
+                    // Teste defensivo: Se encontrarmos um marceneiro inválido,
+                    // vamos registrar um erro claro no console em vez de quebrar a aplicação.
+                    if (carpenter === null || carpenter === undefined || carpenter.toString().trim() === '') {
+                      console.error(`[Debug Select] ERRO: Marceneiro inválido encontrado na lista! Índice: ${index}, Valor:`, carpenter);
+                      // Retornamos null para não renderizar um <SelectItem> para este item inválido.
+                      return null;
+                    }
+
+                    // Se o item for válido, renderizamos normalmente.
+                    return (
+                      <SelectItem key={carpenter} value={carpenter}>
+                        {carpenter}
+                      </SelectItem>
+                    );
+                  })
+                }
+                {
+                  // ----- FIM DO CÓDIGO DE DIAGNÓSTICO -----
+                }
               </SelectContent>
             </Select>
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-2">Materiais Iniciais</label>
-            
+
             {/* Lista de materiais */}
             {formData.materials.length > 0 && (
               <div className="space-y-2 mb-4">

@@ -3,49 +3,72 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
-from src.models.user import db
+from src.models.user import db, User, Carpenter
 from src.routes.user import user_bp
 from src.routes.auth import auth_bp
-from src.routes.ordem import ordem_bp
-from src.routes.marceneiro import marceneiro_bp
-from src.routes.material import material_bp
-from src.routes.historico import historico_bp
+from src.routes.orders import orders_bp
+from src.routes.carpenters import carpenters_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 
-# Configurar CORS para permitir acesso do frontend
+# Configurar CORS para permitir requisições do frontend
 CORS(app, origins="*")
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
-app.register_blueprint(ordem_bp, url_prefix='/api')
-app.register_blueprint(marceneiro_bp, url_prefix='/api')
-app.register_blueprint(material_bp, url_prefix='/api')
-app.register_blueprint(historico_bp, url_prefix='/api')
+app.register_blueprint(orders_bp, url_prefix='/api')
+app.register_blueprint(carpenters_bp, url_prefix='/api')
 
 # Configuração do banco de dados
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
-# Importar todos os modelos para garantir que as tabelas sejam criadas
-from src.models.ordem import Ordem, Marceneiro, Material, OrdemMaterial
-from src.models.auth import Usuario, Sessao
-from src.models.historico import HistoricoAlteracao
+def create_default_admin():
+    """Cria um usuário administrador padrão se não existir"""
+    admin = User.query.filter_by(username='admin').first()
+    if not admin:
+        admin = User(
+            username='admin',
+            email='admin@marcenaria.com',
+            role='administrador'
+        )
+        admin.set_password('admin123')
+        db.session.add(admin)
+        
+        # Criar alguns marceneiros padrão
+        default_carpenters = ['Jadir', 'João', 'Pedro']
+        for name in default_carpenters:
+            if not Carpenter.query.filter_by(name=name).first():
+                carpenter = Carpenter(name=name)
+                db.session.add(carpenter)
+        
+        db.session.commit()
+        print("Usuário administrador padrão criado:")
+        print("Username: admin")
+        print("Password: admin123")
 
 with app.app_context():
     db.create_all()
+    create_default_admin()
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        'status': 'ok',
+        'message': 'API do Sistema de Ordens de Marcenaria está funcionando'
+    }), 200
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
     static_folder_path = app.static_folder
     if static_folder_path is None:
-            return "Static folder not configured", 404
+        return jsonify({'message': 'API do Sistema de Ordens de Marcenaria'}), 200
 
     if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
@@ -54,8 +77,8 @@ def serve(path):
         if os.path.exists(index_path):
             return send_from_directory(static_folder_path, 'index.html')
         else:
-            return "index.html not found", 404
-
+            return jsonify({'message': 'API do Sistema de Ordens de Marcenaria'}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
