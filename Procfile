@@ -1,0 +1,1 @@
+web: python ordens-marcenaria-backend/src/main.py
