@@ -1,7 +1,7 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pip install -r ordens-marcenaria-backend/requirements.txt"
+    "buildCommand": "python -m pip install -r ordens-marcenaria-backend/requirements.txt"
   },
   "deploy": {
     "startCommand": "python ordens-marcenaria-backend/src/main.py",
