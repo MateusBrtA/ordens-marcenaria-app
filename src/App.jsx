@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
 import LoginPage from './components/LoginPage.jsx'
 import { Button } from '@/components/ui/button.jsx'
@@ -527,26 +527,33 @@ function MainApp() {
   )
 }
 
-// Componentes dos modais (simplificados para o exemplo)
+// Componente AddOrderModal corrigido
 function AddOrderModal({ isOpen, onClose, onAddOrder, carpenters }) {
   const [formData, setFormData] = useState({
     id: '',
     description: '',
     entryDate: new Date().toISOString().split('T')[0],
     exitDate: '',
-    carpenter: '',
+    carpenter: 'none', // Valor padrão não vazio
     materials: []
   })
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    onAddOrder(formData)
+    
+    // Converter 'none' para null antes de enviar
+    const orderData = {
+      ...formData,
+      carpenter: formData.carpenter === 'none' ? null : formData.carpenter
+    }
+    
+    onAddOrder(orderData)
     setFormData({
       id: '',
       description: '',
       entryDate: new Date().toISOString().split('T')[0],
       exitDate: '',
-      carpenter: '',
+      carpenter: 'none',
       materials: []
     })
   }
@@ -606,7 +613,7 @@ function AddOrderModal({ isOpen, onClose, onAddOrder, carpenters }) {
                 <SelectValue placeholder="Selecione um marceneiro" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">(Nenhum)</SelectItem>
+                <SelectItem value="none">(Nenhum)</SelectItem>
                 {carpenters.map(carpenter => (
                   <SelectItem key={carpenter} value={carpenter}>{carpenter}</SelectItem>
                 ))}
