@@ -4,11 +4,10 @@
     "builder": "NIXPACKS",
     "nixpacksConfig": {
       "root": "ordens-marcenaria-backend"
-    },
-    "buildCommand": "python3 -m pip install -r requirements.txt"
+    }
   },
   "deploy": {
-    "startCommand": "gunicorn --bind 0.0.0.0:$PORT src.main:app",
+    "startCommand": "gunicorn --bind 0.0.0.0:$PORT \"src:create_app()\"",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
