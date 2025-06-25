@@ -15,7 +15,8 @@ app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'sta
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 
 # Configurar CORS para permitir requisições do frontend
-CORS(app, origins="*")
+frontend_url = "https://ordens-marcenaria-46psr3y68-mateus-projects-5311c5cf.vercel.app/" 
+CORS(app, resources={r"/auth/*": {"origins": frontend_url}})
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
@@ -80,7 +81,6 @@ def serve(path):
             return jsonify({'message': 'API do Sistema de Ordens de Marcenaria'}), 200
 
 if __name__ == '__main__':
-     # Apenas para desenvolvimento local, Gunicorn será usado em produção
      port = int(os.environ.get('PORT', 5000))
      app.run(host='0.0.0.0', port=port, debug=True)
 

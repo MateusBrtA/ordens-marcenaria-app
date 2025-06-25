@@ -1,10 +1,14 @@
 {
+  "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "python -m pip install -r ordens-marcenaria-backend/requirements.txt"
+    "nixpacksConfig": {
+      "root": "ordens-marcenaria-backend"
+    },
+    "buildCommand": "python3 -m pip install -r requirements.txt"
   },
   "deploy": {
-    "startCommand": "gunicorn --bind 0.0.0.0:$PORT ordens-marcenaria-backend.src.main:app",
+    "startCommand": "gunicorn --bind 0.0.0.0:$PORT src.main:app",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
