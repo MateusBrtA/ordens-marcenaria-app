@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
 import LoginPage from './components/LoginPage.jsx'
 import { Button } from '@/components/ui/button.jsx'
