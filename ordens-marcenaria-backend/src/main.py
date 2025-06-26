@@ -15,8 +15,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'a1b9f7c3e8d2a6b0f4c5d9e1a7b8f3c2d6e0a9b4f8c1d5e7'
 
 # Configurar CORS para permitir requisições do frontend
-frontend_url = "https://ordens-marcenaria-app-git-main-mateus-projects-5311c5cf.vercel.app/" 
-CORS(app, resources={r"/*": {"origins": "https://ordens-marcenaria-app.vercel.app"}})
+frontend_url = "https://ordens-marcenaria-app.vercel.app"
+CORS(app, resources={r"/*": {"origins": frontend_url}})
 CORS(app, resources={r"/auth/*": {"origins": frontend_url}})
 
 # Registrar blueprints
