@@ -12,7 +12,7 @@ from src.routes.orders import orders_bp
 from src.routes.carpenters import carpenters_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+app.config['SECRET_KEY'] = 'a1b9f7c3e8d2a6b0f4c5d9e1a7b8f3c2d6e0a9b4f8c1d5e7'
 
 # Configurar CORS para permitir requisições do frontend
 frontend_url = "https://ordens-marcenaria-app-git-main-mateus-projects-5311c5cf.vercel.app/" 
