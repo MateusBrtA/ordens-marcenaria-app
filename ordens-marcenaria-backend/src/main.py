@@ -36,7 +36,6 @@ app.register_blueprint(carpenters_bp, url_prefix='/api')
 # Configuração do banco de dados
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)
 
 def create_default_admin():
     """Cria um usuário administrador padrão se não existir"""
