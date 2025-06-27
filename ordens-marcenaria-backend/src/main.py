@@ -38,28 +38,21 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirnam
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 def create_default_admin():
-    """Cria um usuário administrador padrão se não existir"""
-    admin = User.query.filter_by(username='admin').first()
-    if not admin:
-        admin = User(
-            username='admin',
-            email='admin@marcenaria.com',
-            role='administrador'
-        )
-        admin.set_password('admin123')
-        db.session.add(admin)
-        
-        # Criar alguns marceneiros padrão
-        default_carpenters = ['Jadir', 'João', 'Pedro']
-        for name in default_carpenters:
-            if not Carpenter.query.filter_by(name=name).first():
-                carpenter = Carpenter(name=name)
-                db.session.add(carpenter)
-        
-        db.session.commit()
-        print("Usuário administrador padrão criado:")
-        print("Username: admin")
-        print("Password: admin123")
+    # Certifique-se de que esta função está definida ANTES de ser chamada
+    # e que User é um modelo SQLAlchemy válido
+    try:
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
+            # Importe generate_password_hash do werkzeug.security
+            from werkzeug.security import generate_password_hash
+            # Crie o usuário admin se ele não existir
+            admin_user = User(username='admin', password=generate_password_hash('admin_password'), is_admin=True)
+            db.session.add(admin_user)
+            db.session.commit()
+            print("Usuário admin padrão criado com sucesso!")
+    except Exception as e:
+        print(f"Erro ao criar usuário admin padrão: {e}")
+        db.session.rollback()
 
 with app.app_context():
     db.create_all()
@@ -88,18 +81,13 @@ def serve(path):
         else:
             return jsonify({'message': 'API do Sistema de Ordens de Marcenaria'}), 200
         
-@app.cli.command("create-admin")
-def create_admin_command():
-    """Cria o usuário administrador padrão."""
-    create_default_admin()
-    print("Usuário administrador verificado/criado com sucesso.")  
-
+        
 if __name__ == '__main__':
     with app.app_context():
         db.create_all() # Cria as tabelas com base nos seus modelos
+        create_default_admin() # Certifique-se de que esta função está definida no seu main.py
 
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
-
 
 
