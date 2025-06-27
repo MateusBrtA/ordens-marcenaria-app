@@ -22,7 +22,7 @@ frontend_url = "https://ordens-marcenaria-app.vercel.app"
 CORS(app, resources={r"/*": {"origins": frontend_url}})
 CORS(app, resources={r"/auth/*": {"origins": frontend_url}})
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres.wdtwdyfahpuomvjxloyi:[SenhaTrevo123]@aws-0-sa-east-1.pooler.supabase.com:5432/postgres"
+app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres.wdtwdyfahpuomvjxloyi:SenhaTrevo123@aws-0-sa-east-1.pooler.supabase.com:5432/postgres"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
 
 db = SQLAlchemy(app)
