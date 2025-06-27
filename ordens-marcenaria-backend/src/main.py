@@ -88,13 +88,18 @@ def serve(path):
         else:
             return jsonify({'message': 'API do Sistema de Ordens de Marcenaria'}), 200
         
-# No final do seu main.py, antes de app.run()
+@app.cli.command("create-admin")
+def create_admin_command():
+    """Cria o usuário administrador padrão."""
+    create_default_admin()
+    print("Usuário administrador verificado/criado com sucesso.")  
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all() # Cria as tabelas com base nos seus modelos
-        create_default_admin() # Certifique-se de que esta função está definida no seu main.py
 
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
+
 
 
