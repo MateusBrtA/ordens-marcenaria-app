@@ -10,14 +10,22 @@ from src.routes.user import user_bp
 from src.routes.auth import auth_bp
 from src.routes.orders import orders_bp
 from src.routes.carpenters import carpenters_bp
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'a1b9f7c3e8d2a6b0f4c5d9e1a7b8f3c2d6e0a9b4f8c1d5e7'
+
+#Url do supabase
 
 # Configurar CORS para permitir requisições do frontend
 frontend_url = "https://ordens-marcenaria-app.vercel.app"
 CORS(app, resources={r"/*": {"origins": frontend_url}})
 CORS(app, resources={r"/auth/*": {"origins": frontend_url}})
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:[SenhaTrevo123]@db.wdtwdyfahpuomvjxloyi.supabase.co:5432/postgres"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
+
+db = SQLAlchemy(app)
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
@@ -80,6 +88,13 @@ def serve(path):
             return send_from_directory(static_folder_path, 'index.html')
         else:
             return jsonify({'message': 'API do Sistema de Ordens de Marcenaria'}), 200
+        
+# No final do seu main.py, antes de app.run()
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all() # Cria as tabelas com base nos seus modelos
+    app.run(debug=True)
+
 
 if __name__ == '__main__':
      port = int(os.environ.get('PORT', 5000))
