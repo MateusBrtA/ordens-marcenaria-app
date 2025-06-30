@@ -24,8 +24,7 @@ CORS(app, resources={r"/auth/*": {"origins": frontend_url}})
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres.wdtwdyfahpuomvjxloyi:SenhaTrevo123@aws-0-sa-east-1.pooler.supabase.com:5432/postgres"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
-
-db = SQLAlchemy(app)
+db.init_app(app)
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
@@ -41,12 +40,11 @@ def create_default_admin():
     # Certifique-se de que esta função está definida ANTES de ser chamada
     # e que User é um modelo SQLAlchemy válido
     try:
-        admin = User.query.filter_by(username='admin').first()
+        admin = User.query.filter_by(username="admin").first()
         if not admin:
-            # Importe generate_password_hash do werkzeug.security
             from werkzeug.security import generate_password_hash
-            # Crie o usuário admin se ele não existir
-            admin_user = User(username='admin', password=generate_password_hash('admin_password'), is_admin=True)
+            admin_user = User(username="admin", email="admin@example.com", role="administrador")
+            admin_user.set_password("admin_password")
             db.session.add(admin_user)
             db.session.commit()
             print("Usuário admin padrão criado com sucesso!")
