@@ -46,33 +46,22 @@ function MainApp() {
     loadData()
   }, [])
 
-const loadData = async () => {
-  try {
-    setLoading(true)
-    console.log('Carregando dados...')
-    
-    const [ordersResponse, carpentersResponse] = await Promise.all([
-      ordersAPI.getAll(),
-      carpentersAPI.getAll()
-    ])
-    
-    console.log('Resposta de ordens:', ordersResponse.data)
-    console.log('Resposta de marceneiros:', carpentersResponse.data)
-    
-    setOrders(ordersResponse.data.orders || [])
-    const carpenterNames = carpentersResponse.data.carpenters?.map(c => c.name) || []
-    setCarpenters(carpenterNames)
-    
-    console.log('Ordens carregadas:', ordersResponse.data.orders?.length || 0)
-    console.log('Marceneiros carregados:', carpenterNames.length)
-    
-  } catch (err) {
-    setError('Erro ao carregar dados: ' + (err.response?.data?.message || err.message))
-    console.error('Erro detalhado:', err)
-  } finally {
-    setLoading(false)
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      const [ordersResponse, carpentersResponse] = await Promise.all([
+        ordersAPI.getAll(),
+        carpentersAPI.getNames()
+      ])
+      
+      setOrders(ordersResponse.data.orders || [])
+      setCarpenters(carpentersResponse.data.carpenters || [])
+    } catch (err) {
+      setError('Erro ao carregar dados: ' + (err.response?.data?.message || err.message))
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -87,10 +76,9 @@ const loadData = async () => {
 
   const handleAddOrder = async (newOrder) => {
     try {
-      await ordersAPI.create(newOrder)
+      const response = await ordersAPI.create(newOrder)
+      setOrders(prev => [...prev, response.data.order])
       setShowAddOrderModal(false)
-      // Recarregar todos os dados para garantir consistência
-      await loadData()
     } catch (err) {
       alert('Erro ao criar ordem: ' + (err.response?.data?.message || err.message))
     }
@@ -132,8 +120,8 @@ const loadData = async () => {
   const handleAddCarpenter = async (name) => {
     try {
       await carpentersAPI.create({ name })
-      // Recarregar todos os dados para garantir consistência
-      await loadData()
+      const response = await carpentersAPI.getNames()
+      setCarpenters(response.data.carpenters || [])
     } catch (err) {
       alert('Erro ao adicionar marceneiro: ' + (err.response?.data?.message || err.message))
     }
@@ -148,8 +136,11 @@ const loadData = async () => {
         
         if (carpenter) {
           await carpentersAPI.delete(carpenter.id)
-          // Recarregar todos os dados uma única vez
-          await loadData()
+          const response = await carpentersAPI.getNames()
+          setCarpenters(response.data.carpenters || [])
+          
+          // Recarregar ordens para atualizar marceneiros removidos
+          loadData()
         }
       } catch (err) {
         alert('Erro ao remover marceneiro: ' + (err.response?.data?.message || err.message))
