@@ -1,37 +1,56 @@
-import { useState, useEffect } from 'react'
-import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
-import LoginPage from './components/LoginPage.jsx'
-import { Button } from '@/components/ui/button.jsx'
-import { Input } from '@/components/ui/input.jsx'
-import { Textarea } from '@/components/ui/textarea.jsx'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
-import { Checkbox } from '@/components/ui/checkbox.jsx'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog.jsx'
-import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut, User } from 'lucide-react'
-import { exportToExcel } from './utils/excelExport.js'
-import { ordersAPI, carpentersAPI } from './services/api.js'
-import './App.css'
+import { useState, useEffect, useCallback } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import LoginPage from './components/LoginPage.jsx';
+import { Button } from '@/components/ui/button.jsx';
+import { Input } from '@/components/ui/input.jsx';
+import { Textarea } from '@/components/ui/textarea.jsx';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
+import { Checkbox } from '@/components/ui/checkbox.jsx';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog.jsx';
+import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut, User, Edit } from 'lucide-react';
+import { exportToExcel } from './utils/excelExport.js';
+import { ordersAPI, carpentersAPI } from './services/api.js';
+import './App.css';
+
+// Importar os modais
+import AddOrderModal from './components/AddOrderModal.jsx';
+import ManageCarpenterModal from './components/ManageCarpenterModal.jsx';
+import EditOrderModal from './components/EditOrderModal.jsx'; // Importe o novo modal de edição
 
 function MainApp() {
-  const { user, logout, canEdit, canAdmin } = useAuth()
-  const [orders, setOrders] = useState([])
-  const [carpenters, setCarpenters] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCarpenter, setSelectedCarpenter] = useState('Todos')
+  const { user, logout, canEdit, canAdmin } = useAuth();
+  const [orders, setOrders] = useState([]);
+  const [carpenters, setCarpenters] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCarpenter, setSelectedCarpenter] = useState('Todos');
   const [statusFilters, setStatusFilters] = useState({
     atrasada: true,
     paraHoje: true,
     emProcesso: true,
     recebida: true,
     concluida: true
-  })
-  const [viewMode, setViewMode] = useState('cards')
-  const [showAddOrderModal, setShowAddOrderModal] = useState(false)
-  const [showManageCarpenterModal, setShowManageCarpenterModal] = useState(false)
-  const [showMaterialsModal, setShowMaterialsModal] = useState(false)
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  });
+  const [viewMode, setViewMode] = useState('cards');
+  const [showAddOrderModal, setShowAddOrderModal] = useState(false);
+  const [showManageCarpenterModal, setShowManageCarpenterModal] = useState(false);
+  const [showMaterialsModal, setShowMaterialsModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null); // Usado para o modal de materiais
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Estados para os novos modais de alerta/confirmação
+  const [dialog, setDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'alert', // 'alert' or 'confirm'
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
+
+  // Estados para o modal de edição de ordem
+  const [isEditOrderModalOpen, setIsEditOrderModalOpen] = useState(false);
+  const [orderToEdit, setOrderToEdit] = useState(null);
 
   const statusColumns = [
     { key: 'atrasada', title: 'Atrasada', color: 'bg-red-500' },
@@ -39,136 +58,200 @@ function MainApp() {
     { key: 'emProcesso', title: 'Em Processo', color: 'bg-yellow-400' },
     { key: 'recebida', title: 'Recebida', color: 'bg-blue-400' },
     { key: 'concluida', title: 'Concluída', color: 'bg-gray-500' }
-  ]
+  ];
+
+  // Funções para exibir modais personalizados
+  const showCustomAlert = useCallback((title, message) => {
+    setDialog({ isOpen: true, title, message, type: 'alert', onConfirm: () => {}, onCancel: () => {} });
+  }, []);
+
+  const showCustomConfirm = useCallback((title, message, onConfirmCallback, onCancelCallback) => {
+    setDialog({ isOpen: true, title, message, type: 'confirm', onConfirm: onConfirmCallback, onCancel: onCancelCallback });
+  }, []);
+
+  const closeDialog = useCallback(() => {
+    setDialog(prev => ({ ...prev, isOpen: false }));
+  }, []);
 
   // Carregar dados iniciais
-  useEffect(() => {
-    loadData()
-  }, [])
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(''); // Limpar erros anteriores
 
-const loadData = async () => {
-  try {
-    setLoading(true)
-    console.log("Iniciando carregamento de dados...")
-    
-    const [ordersResponse, carpentersResponse] = await Promise.all([
-      ordersAPI.getAll(),
-      carpentersAPI.getAll() // <-- MUITO IMPORTANTE: usar getAll() para obter todos os dados do marceneiro
-    ])
-    
-    console.log("Resposta de ordens (ordersResponse.data):", ordersResponse.data)
-    console.log("Resposta de marceneiros (carpentersResponse.data):", carpentersResponse.data)
-    
-    // Certifique-se de que a estrutura de dados está correta
-    // O backend deve retornar { orders: [...] } e { carpenters: [...] }
-    setOrders(ordersResponse.data.orders || [])
-    
-    // Para o dropdown de marceneiros, você precisa apenas dos nomes
-    const carpenterNames = carpentersResponse.data.carpenters?.map(c => c.name) || []
-    setCarpenters(carpenterNames)
-    
-    console.log("Ordens carregadas (quantidade):", ordersResponse.data.orders?.length || 0)
-    console.log("Marceneiros carregados (quantidade):", carpenterNames.length)
-    
-  } catch (err) {
-    setError("Erro ao carregar dados: " + (err.response?.data?.message || err.message))
-    console.error("Erro detalhado no loadData:", err.response?.data || err.message || err)
-  } finally {
-    setLoading(false)
-  }
-}
+      console.log('🔄 Iniciando carregamento de dados...');
+
+      const [ordersResponse, carpentersResponse] = await Promise.all([
+        ordersAPI.getAll(),
+        carpentersAPI.getAll()
+      ]);
+
+      console.log('📦 Resposta de ordens:', ordersResponse.data);
+      console.log('👷 Resposta de marceneiros:', carpentersResponse.data);
+
+      // Processar ordens
+      const ordersData = ordersResponse.data.orders || ordersResponse.data || [];
+      setOrders(ordersData);
+
+      // Processar marceneiros - extrair apenas os nomes para o dropdown
+      const carpentersData = carpentersResponse.data.carpenters || carpentersResponse.data || [];
+      const carpenterNames = carpentersData.map(c => typeof c === 'string' ? c : c.name);
+      setCarpenters(carpenterNames);
+
+      console.log('✅ Dados carregados:', {
+        ordens: ordersData.length,
+        marceneiros: carpenterNames.length
+      });
+
+    } catch (err) {
+      const errorMessage = 'Erro ao carregar dados: ' + (err.response?.data?.message || err.message);
+      setError(errorMessage);
+      console.error('❌ Erro no carregamento:', err);
+      console.error('❌ Detalhes do erro:', err.response?.data || err.message);
+      showCustomAlert('Erro de Carregamento', errorMessage); // Exibir alerta personalizado
+    } finally {
+      setLoading(false);
+    }
+  }, [showCustomAlert]); // Adicionar showCustomAlert como dependência
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]); // Adicionar loadData como dependência
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCarpenter = selectedCarpenter === 'Todos' || order.carpenter === selectedCarpenter
-    const matchesStatus = statusFilters[order.status]
-    return matchesSearch && matchesCarpenter && matchesStatus
-  })
+    const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCarpenter = selectedCarpenter === 'Todos' || order.carpenter === selectedCarpenter;
+    const matchesStatus = statusFilters[order.status];
+    return matchesSearch && matchesCarpenter && matchesStatus;
+  });
 
   const getOrdersByStatus = (status) => {
-    return filteredOrders.filter(order => order.status === status)
-  }
+    return filteredOrders.filter(order => order.status === status);
+  };
 
   const handleAddOrder = async (newOrder) => {
     try {
-      await ordersAPI.create(newOrder)
-      setShowAddOrderModal(false)
-      // Recarregar todos os dados para garantir consistência
-      await loadData()
+      console.log('➕ Criando nova ordem:', newOrder);
+      await ordersAPI.create(newOrder);
+      setShowAddOrderModal(false);
+      console.log('✅ Ordem criada, recarregando dados...');
+      await loadData(); // Recarregar todos os dados do servidor
+      showCustomAlert('Sucesso', 'Ordem criada com sucesso!');
     } catch (err) {
-      alert('Erro ao criar ordem: ' + (err.response?.data?.message || err.message))
+      const errorMessage = 'Erro ao criar ordem: ' + (err.response?.data?.message || err.message);
+      showCustomAlert('Erro', errorMessage);
+      console.error('❌ Erro ao criar ordem:', err);
     }
-  }
+  };
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      const response = await ordersAPI.update(orderId, { status: newStatus })
-      setOrders(prev => prev.map(order =>
-        order.id === orderId ? response.data.order : order
-      ))
-      await loadData()
+      console.log('🔄 Atualizando status da ordem:', orderId, 'para:', newStatus);
+      await ordersAPI.update(orderId, { status: newStatus });
+      console.log('✅ Status atualizado, recarregando dados...');
+      await loadData(); // Recarregar todos os dados do servidor
+      showCustomAlert('Sucesso', 'Status da ordem atualizado!');
     } catch (err) {
-      alert('Erro ao atualizar status: ' + (err.response?.data?.message || err.message))
+      const errorMessage = 'Erro ao atualizar status: ' + (err.response?.data?.message || err.message);
+      showCustomAlert('Erro', errorMessage);
+      console.error('❌ Erro ao atualizar status:', err);
     }
-  }
+  };
 
   const handleUpdateOrder = async (updatedOrder) => {
     try {
-      const response = await ordersAPI.update(updatedOrder.id, updatedOrder)
-      setOrders(prev => prev.map(order =>
-        order.id === updatedOrder.id ? response.data.order : order
-      ))
-      await loadData()
+      console.log('🔄 Atualizando ordem:', updatedOrder.id);
+      await ordersAPI.update(updatedOrder.id, updatedOrder);
+      setIsEditOrderModalOpen(false); // Fechar o modal de edição
+      console.log('✅ Ordem atualizada, recarregando dados...');
+      await loadData(); // Recarregar todos os dados do servidor
+      showCustomAlert('Sucesso', 'Ordem atualizada com sucesso!');
     } catch (err) {
-      alert('Erro ao atualizar ordem: ' + (err.response?.data?.message || err.message))
+      const errorMessage = 'Erro ao atualizar ordem: ' + (err.response?.data?.message || err.message);
+      showCustomAlert('Erro', errorMessage);
+      console.error('❌ Erro ao atualizar ordem:', err);
     }
-  }
+  };
 
-  const handleDeleteOrder = async (orderId) => {
-    if (confirm('Tem certeza que deseja excluir esta ordem?')) {
-      try {
-        await ordersAPI.delete(orderId)
-        setOrders(prev => prev.filter(order => order.id !== orderId))
-        await loadData()
-      } catch (err) {
-        alert('Erro ao excluir ordem: ' + (err.response?.data?.message || err.message))
+  const handleDeleteOrder = (orderId) => {
+    showCustomConfirm(
+      'Confirmar Exclusão',
+      'Tem certeza que deseja excluir esta ordem? Esta ação não pode ser desfeita.',
+      async () => {
+        try {
+          console.log('🗑️ Deletando ordem:', orderId);
+          await ordersAPI.delete(orderId);
+          console.log('✅ Ordem deletada, recarregando dados...');
+          await loadData(); // Recarregar todos os dados do servidor
+          showCustomAlert('Sucesso', 'Ordem excluída com sucesso!');
+        } catch (err) {
+          const errorMessage = 'Erro ao excluir ordem: ' + (err.response?.data?.message || err.message);
+          showCustomAlert('Erro', errorMessage);
+          console.error('❌ Erro ao deletar ordem:', err);
+        } finally {
+          closeDialog();
+        }
+      },
+      () => {
+        console.log('Exclusão cancelada.');
+        closeDialog();
       }
-    }
-  }
+    );
+  };
 
   const handleAddCarpenter = async (name) => {
     try {
-      await carpentersAPI.create({ name })
-      // Recarregar todos os dados para garantir consistência
-      await loadData()
+      console.log('➕ Criando novo marceneiro:', name);
+      await carpentersAPI.create({ name });
+      console.log('✅ Marceneiro criado, recarregando dados...');
+      await loadData(); // Recarregar todos os dados do servidor
+      showCustomAlert('Sucesso', `Marceneiro "${name}" adicionado!`);
     } catch (err) {
-      alert('Erro ao adicionar marceneiro: ' + (err.response?.data?.message || err.message))
+      const errorMessage = 'Erro ao adicionar marceneiro: ' + (err.response?.data?.message || err.message);
+      showCustomAlert('Erro', errorMessage);
+      console.error('❌ Erro ao criar marceneiro:', err);
     }
-  }
+  };
 
-  const handleRemoveCarpenter = async (name) => {
-    if (confirm(`Tem certeza que deseja remover o marceneiro "${name}"?`)) {
-      try {
-        // Encontrar o ID do marceneiro
-        const carpentersResponse = await carpentersAPI.getAll()
-        const carpenter = carpentersResponse.data.carpenters.find(c => c.name === name)
-        
-        if (carpenter) {
-          await carpentersAPI.delete(carpenter.id)
-          // Recarregar todos os dados uma única vez
-          await loadData()
+  const handleRemoveCarpenter = (name) => {
+    showCustomConfirm(
+      'Confirmar Remoção',
+      `Tem certeza que deseja remover o marceneiro "${name}"?`,
+      async () => {
+        try {
+          console.log('🗑️ Removendo marceneiro:', name);
+          // Encontrar o ID do marceneiro
+          const carpentersResponse = await carpentersAPI.getAll();
+          const carpenter = carpentersResponse.data.carpenters.find(c => c.name === name);
+
+          if (carpenter) {
+            await carpentersAPI.delete(carpenter.id);
+            console.log('✅ Marceneiro removido, recarregando dados...');
+            await loadData(); // Recarregar todos os dados do servidor
+            showCustomAlert('Sucesso', `Marceneiro "${name}" removido!`);
+          } else {
+            showCustomAlert('Erro', `Marceneiro "${name}" não encontrado.`);
+          }
+        } catch (err) {
+          const errorMessage = 'Erro ao remover marceneiro: ' + (err.response?.data?.message || err.message);
+          showCustomAlert('Erro', errorMessage);
+          console.error('❌ Erro ao remover marceneiro:', err);
+        } finally {
+          closeDialog();
         }
-      } catch (err) {
-        alert('Erro ao remover marceneiro: ' + (err.response?.data?.message || err.message))
+      },
+      () => {
+        console.log('Remoção de marceneiro cancelada.');
+        closeDialog();
       }
-    }
-  }
+    );
+  };
 
   const formatDate = (dateString) => {
-    if (!dateString) return ''
-    const date = new Date(dateString)
-    return date.toLocaleDateString('pt-BR')
-  }
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR');
+  };
 
   const OrderCard = ({ order }) => (
     <div className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow mb-3">
@@ -246,8 +329,8 @@ const loadData = async () => {
 
         <Button
           onClick={() => {
-            setSelectedOrder(order)
-            setShowMaterialsModal(true)
+            setSelectedOrder(order);
+            setShowMaterialsModal(true);
           }}
           className="w-full bg-blue-500 hover:bg-blue-600 text-white h-8 text-sm"
         >
@@ -255,7 +338,7 @@ const loadData = async () => {
         </Button>
       </div>
     </div>
-  )
+  );
 
   if (loading) {
     return (
@@ -265,16 +348,16 @@ const loadData = async () => {
           <p className="mt-4 text-gray-600">Carregando...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-6 font-inter"> {/* Adicionado font-inter */}
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Ordens de Serviço</h1>
-          
+
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <User size={16} />
@@ -298,8 +381,40 @@ const loadData = async () => {
           </div>
         )}
 
+        {/* Seção de Debug Visual */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <h3 className="font-bold text-yellow-800 mb-2">🔍 Debug - Status dos Dados</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <strong>Ordens carregadas:</strong> {orders.length} itens
+              {orders.length > 0 && (
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-blue-600">Ver detalhes</summary>
+                  <pre className="text-xs bg-white p-2 mt-1 rounded border max-h-32 overflow-auto">
+                    {JSON.stringify(orders.slice(0, 2), null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
+            <div>
+              <strong>Marceneiros carregados:</strong> {carpenters.length} itens
+              {carpenters.length > 0 && (
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-blue-600">Ver detalhes</summary>
+                  <pre className="text-xs bg-white p-2 mt-1 rounded border max-h-32 overflow-auto">
+                    {JSON.stringify(carpenters, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-yellow-700">
+            💡 Esta seção pode ser removida após confirmar que os dados estão carregando corretamente
+          </div>
+        </div>
+
         {/* Action Buttons */}
-        <div className="flex justify-center gap-4 mb-6">
+        <div className="flex flex-wrap justify-center gap-4 mb-6">
           {canEdit() && (
             <Button
               onClick={() => setShowAddOrderModal(true)}
@@ -309,7 +424,7 @@ const loadData = async () => {
               Adicionar Ordem
             </Button>
           )}
-          
+
           {canEdit() && (
             <Button
               onClick={() => setShowManageCarpenterModal(true)}
@@ -319,21 +434,32 @@ const loadData = async () => {
               Gerenciar Marceneiros
             </Button>
           )}
-          
+
           <Button
             onClick={() => {
               try {
-                exportToExcel(orders, carpenters)
-                alert('Arquivo Excel exportado com sucesso!')
+                exportToExcel(orders, carpenters);
+                showCustomAlert('Sucesso', 'Arquivo Excel exportado com sucesso!');
               } catch (error) {
-                alert('Erro ao exportar: ' + error.message)
-                console.error('Erro na exportação:', error)
+                showCustomAlert('Erro', 'Erro ao exportar: ' + error.message);
+                console.error('Erro na exportação:', error);
               }
             }}
             className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
           >
             <FileSpreadsheet size={20} />
             Exportar Excel
+          </Button>
+
+          {/* Botão de Debug Temporário */}
+          <Button
+            onClick={() => {
+              console.log('🔄 Forçando recarregamento de dados...');
+              loadData();
+            }}
+            className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+          >
+            🔄 Recarregar (Debug)
           </Button>
         </div>
       </div>
@@ -350,7 +476,7 @@ const loadData = async () => {
             placeholder="Ex: OS-123"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
+            className="w-full rounded-md"
           />
         </div>
 
@@ -360,7 +486,7 @@ const loadData = async () => {
             Filtrar por Encarregado
           </label>
           <Select value={selectedCarpenter} onValueChange={setSelectedCarpenter}>
-            <SelectTrigger>
+            <SelectTrigger className="rounded-md">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -401,6 +527,7 @@ const loadData = async () => {
             variant={viewMode === 'cards' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('cards')}
+            className="rounded-md"
           >
             <LayoutGrid size={16} />
           </Button>
@@ -408,6 +535,7 @@ const loadData = async () => {
             variant={viewMode === 'lines' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('lines')}
+            className="rounded-md"
           >
             <List size={16} />
           </Button>
@@ -416,7 +544,7 @@ const loadData = async () => {
 
       {/* Orders Display */}
       {viewMode === 'cards' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"> {/* Ajustado para 4 colunas em XL */}
           {statusColumns.map(status => (
             <div key={status.key} className="bg-white rounded-lg shadow-sm">
               <div className={`${status.color} text-white p-3 rounded-t-lg flex justify-between items-center`}>
@@ -438,8 +566,8 @@ const loadData = async () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm">
-          <div className="p-4">
+        <div className="bg-white rounded-lg shadow-sm overflow-x-auto"> {/* Adicionado overflow-x-auto */}
+          <div className="p-4 min-w-[700px]"> {/* Largura mínima para evitar quebra em telas menores */}
             <div className="grid grid-cols-6 gap-4 font-semibold text-gray-700 border-b pb-2 mb-4">
               <div>ID</div>
               <div>Descrição</div>
@@ -457,51 +585,33 @@ const loadData = async () => {
                   <div className="text-sm truncate" title={order.description}>
                     {order.description}
                   </div>
-                  <div>{order.carpenter || 'Não atribuído'}</div>
-                  <div>{formatDate(order.exitDate)}</div>
-                  <div>
-                    {canEdit() ? (
-                      <Select
-                        value={order.status}
-                        onValueChange={(value) => handleUpdateOrderStatus(order.id, value)}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {statusColumns.map(option => (
-                            <SelectItem key={option.key} value={option.key}>
-                              {option.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <span className="text-sm">
-                        {statusColumns.find(s => s.key === order.status)?.title || order.status}
-                      </span>
-                    )}
+                  <div className="text-sm">{order.carpenter || '(Nenhum)'}</div>
+                  <div className="text-sm">{formatDate(order.exitDate)}</div>
+                  <div className="text-sm">
+                    {statusColumns.find(s => s.key === order.status)?.title || order.status}
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedOrder(order)
-                        setShowMaterialsModal(true)
-                      }}
-                      className="text-blue-500 hover:text-blue-700"
-                    >
-                      Materiais
-                    </Button>
+                    {canEdit() && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setOrderToEdit(order);
+                          setIsEditOrderModalOpen(true);
+                        }}
+                        className="rounded-md"
+                      >
+                        <Edit size={16} className="mr-1" /> Editar
+                      </Button>
+                    )}
                     {canEdit() && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleDeleteOrder(order.id)}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-500 hover:text-red-700 rounded-md"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} className="mr-1" /> Excluir
                       </Button>
                     )}
                   </div>
@@ -513,297 +623,95 @@ const loadData = async () => {
       )}
 
       {/* Modals */}
-      {canEdit() && (
-        <>
-          <AddOrderModal
-            isOpen={showAddOrderModal}
-            onClose={() => setShowAddOrderModal(false)}
-            onAddOrder={handleAddOrder}
-            carpenters={carpenters}
-          />
-
-          <ManageCarpenterModal
-            isOpen={showManageCarpenterModal}
-            onClose={() => setShowManageCarpenterModal(false)}
-            carpenters={carpenters}
-            onAddCarpenter={handleAddCarpenter}
-            onRemoveCarpenter={handleRemoveCarpenter}
-          />
-        </>
+      {showAddOrderModal && (
+        <AddOrderModal
+          isOpen={showAddOrderModal}
+          onClose={() => setShowAddOrderModal(false)}
+          onAddOrder={handleAddOrder}
+          carpenters={carpenters} // Passar apenas os nomes dos marceneiros
+        />
       )}
 
-      <MaterialsModal
-        isOpen={showMaterialsModal}
-        onClose={() => setShowMaterialsModal(false)}
-        order={selectedOrder}
-        onUpdateOrder={handleUpdateOrder}
-        canEdit={canEdit()}
-      />
-    </div>
-  )
-}
+      {showManageCarpenterModal && (
+        <ManageCarpenterModal
+          isOpen={showManageCarpenterModal}
+          onClose={() => setShowManageCarpenterModal(false)}
+          onAddCarpenter={handleAddCarpenter}
+          onRemoveCarpenter={handleRemoveCarpenter}
+          carpenters={carpenters} // Passar apenas os nomes dos marceneiros
+        />
+      )}
 
-// Componente AddOrderModal corrigido
-function AddOrderModal({ isOpen, onClose, onAddOrder, carpenters }) {
-  const [formData, setFormData] = useState({
-    id: '',
-    description: '',
-    entryDate: new Date().toISOString().split('T')[0],
-    exitDate: '',
-    carpenter: 'none', // Valor padrão não vazio
-    materials: []
-  })
+      {/* Modal de Edição de Ordem */}
+      {isEditOrderModalOpen && orderToEdit && (
+        <EditOrderModal
+          isOpen={isEditOrderModalOpen}
+          onClose={() => setIsEditOrderModalOpen(false)}
+          order={orderToEdit}
+          onUpdateOrder={handleUpdateOrder}
+          carpenters={carpenters}
+        />
+      )}
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    
-    // Converter 'none' para null antes de enviar
-    const orderData = {
-      ...formData,
-      carpenter: formData.carpenter === 'none' ? null : formData.carpenter
-    }
-    
-    onAddOrder(orderData)
-    setFormData({
-      id: '',
-      description: '',
-      entryDate: new Date().toISOString().split('T')[0],
-      exitDate: '',
-      carpenter: 'none',
-      materials: []
-    })
-  }
+      {/* Modal de Materiais (inline, poderia ser um componente MaterialsModal.jsx) */}
+      {showMaterialsModal && selectedOrder && (
+        <Dialog open={showMaterialsModal} onOpenChange={setShowMaterialsModal}>
+          <DialogContent className="sm:max-w-[425px] rounded-lg">
+            <DialogHeader>
+              <DialogTitle>Materiais da Ordem: {selectedOrder.id}</DialogTitle>
+              <DialogDescription>
+                Lista de materiais associados à ordem de serviço.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 max-h-96 overflow-y-auto">
+              {selectedOrder.materials && selectedOrder.materials.length > 0 ? (
+                <ul className="list-disc pl-5 space-y-2">
+                  {selectedOrder.materials.map((material, index) => (
+                    <li key={index} className="text-gray-700">
+                      <span className="font-medium">{material.description}</span> ({material.quantity})
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500 text-center">Nenhum material cadastrado para esta ordem.</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setShowMaterialsModal(false)} className="rounded-md">Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
-  if (!isOpen) return null
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Adicionar Nova Ordem</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">ID da Ordem</label>
-            <Input
-              value={formData.id}
-              onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
-              placeholder="Ex: OS-123"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Descrição</label>
-            <Textarea
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Descrição do serviço"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Data de Entrada</label>
-            <Input
-              type="date"
-              value={formData.entryDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, entryDate: e.target.value }))}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Estimativa de Saída</label>
-            <Input
-              type="date"
-              value={formData.exitDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, exitDate: e.target.value }))}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Marceneiro</label>
-            <Select
-              value={formData.carpenter}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, carpenter: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um marceneiro" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">(Nenhum)</SelectItem>
-                {carpenters.map(carpenter => (
-                  <SelectItem key={carpenter} value={carpenter}>{carpenter}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              Salvar Ordem
+      {/* Modal de Alerta/Confirmação Personalizado */}
+      <Dialog open={dialog.isOpen} onOpenChange={closeDialog}>
+        <DialogContent className="sm:max-w-[425px] rounded-lg">
+          <DialogHeader>
+            <DialogTitle>{dialog.title}</DialogTitle>
+            <DialogDescription>{dialog.message}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end gap-2">
+            {dialog.type === 'confirm' && (
+              <Button variant="outline" onClick={dialog.onCancel} className="rounded-md">
+                Cancelar
+              </Button>
+            )}
+            <Button onClick={dialog.onConfirm || closeDialog} className="rounded-md">
+              {dialog.type === 'confirm' ? 'Confirmar' : 'Ok'}
             </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function ManageCarpenterModal({ isOpen, onClose, carpenters, onAddCarpenter, onRemoveCarpenter }) {
-  const [newCarpenterName, setNewCarpenterName] = useState('')
-
-  const handleAdd = () => {
-    if (newCarpenterName.trim()) {
-      onAddCarpenter(newCarpenterName.trim())
-      setNewCarpenterName('')
-    }
-  }
-
-  if (!isOpen) return null
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Gerenciar Marceneiros</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              value={newCarpenterName}
-              onChange={(e) => setNewCarpenterName(e.target.value)}
-              placeholder="Nome do marceneiro"
-              onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
-            />
-            <Button onClick={handleAdd}>Adicionar</Button>
-          </div>
-          <div className="space-y-2">
-            {carpenters.map(carpenter => (
-              <div key={carpenter} className="flex justify-between items-center p-2 border rounded">
-                <span>{carpenter}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onRemoveCarpenter(carpenter)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <Trash2 size={14} />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function MaterialsModal({ isOpen, onClose, order, onUpdateOrder, canEdit }) {
-  const [materials, setMaterials] = useState([])
-  const [newMaterial, setNewMaterial] = useState({ description: '', quantity: 1 })
-
-  useEffect(() => {
-    if (order) {
-      setMaterials(order.materials || [])
-    }
-  }, [order])
-
-  const handleAddMaterial = () => {
-    if (newMaterial.description.trim()) {
-      const updatedMaterials = [...materials, { ...newMaterial, id: Date.now() }]
-      setMaterials(updatedMaterials)
-      onUpdateOrder({ ...order, materials: updatedMaterials })
-      setNewMaterial({ description: '', quantity: 1 })
-    }
-  }
-
-  const handleRemoveMaterial = (materialId) => {
-    const updatedMaterials = materials.filter(m => m.id !== materialId)
-    setMaterials(updatedMaterials)
-    onUpdateOrder({ ...order, materials: updatedMaterials })
-  }
-
-  if (!isOpen || !order) return null
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Materiais - {order.id}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {canEdit && (
-            <div className="flex gap-2">
-              <Input
-                value={newMaterial.description}
-                onChange={(e) => setNewMaterial(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Descrição do material"
-              />
-              <Input
-                type="number"
-                value={newMaterial.quantity}
-                onChange={(e) => setNewMaterial(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                className="w-20"
-                min="1"
-              />
-              <Button onClick={handleAddMaterial}>Adicionar</Button>
-            </div>
-          )}
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {materials.map(material => (
-              <div key={material.id} className="flex justify-between items-center p-2 border rounded">
-                <span>{material.description} (Qtd: {material.quantity})</span>
-                {canEdit && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRemoveMaterial(material.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <X size={14} />
-                  </Button>
-                )}
-              </div>
-            ))}
-            {materials.length === 0 && (
-              <p className="text-gray-500 text-center py-4">Nenhum material cadastrado</p>
-            )}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <MainApp />
     </AuthProvider>
-  )
+  );
 }
 
-function AppContent() {
-  const { user, login, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <LoginPage onLogin={login} />
-  }
-
-  return <MainApp />
-}
-
-export default App
-
+export default App;
