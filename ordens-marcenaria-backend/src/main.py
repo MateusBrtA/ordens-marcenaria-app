@@ -14,10 +14,8 @@ from src.routes.carpenters import carpenters_bp
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'a1b9f7c3e8d2a6b0f4c5d9e1a7b8f3c2d6e0a9b4f8c1d5e7'
 
-# Configuração do banco de dados - SQLite Local
-database_path = os.path.join(os.path.dirname(__file__), 'database', 'ordens_marcenaria.db')
-os.makedirs(os.path.dirname(database_path), exist_ok=True)
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{database_path}"
+# Configuração do banco de dados - APENAS SUPABASE
+app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres.wdtwdyfahpuomvjxloyi:SenhaTrevo123@aws-0-sa-east-1.pooler.supabase.com:5432/postgres"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Inicializar SQLAlchemy com a aplicação Flask
@@ -51,12 +49,9 @@ def create_default_admin():
 # Inicializar banco de dados e criar usuário admin
 with app.app_context():
     try:
-        # Remover todas as tabelas existentes e recriar (apenas para migração)
-        db.drop_all()
         db.create_all()
         create_default_admin()
-        print("Banco de dados SQLite inicializado com sucesso!")
-        print(f"Banco de dados criado em: {database_path}")
+        print("Banco de dados inicializado com sucesso!")
     except Exception as e:
         print(f"Erro ao inicializar banco de dados: {e}")
 
