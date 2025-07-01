@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import LoginPage from './components/LoginPage.jsx';
+import BackendConfig from './components/BackendConfig.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { Textarea } from '@/components/ui/textarea.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
 import { Checkbox } from '@/components/ui/checkbox.jsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog.jsx';
-import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut, User, Edit } from 'lucide-react';
+import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut, User, Edit, RefreshCw } from 'lucide-react';
 import { exportToExcel } from './utils/excelExport.js';
 import { ordersAPI, carpentersAPI } from './services/api.js';
 import './App.css';
@@ -15,12 +16,13 @@ import './App.css';
 // Importar os modais
 import AddOrderModal from './components/AddOrderModal.jsx';
 import ManageCarpenterModal from './components/ManageCarpenterModal.jsx';
-import EditOrderModal from './components/EditOrderModal.jsx'; // Importe o novo modal de edição
+import EditOrderModal from './components/EditOrderModal.jsx';
 
 function MainApp() {
   const { user, logout, canEdit, canAdmin } = useAuth();
   const [orders, setOrders] = useState([]);
-  const [carpenters, setCarpenters] = useState([]);
+  const [carpenters, setCarpentersList] = useState([]);
+  const [carpentersWithStats, setCarpentersWithStats] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCarpenter, setSelectedCarpenter] = useState('Todos');
   const [statusFilters, setStatusFilters] = useState({
@@ -34,7 +36,7 @@ function MainApp() {
   const [showAddOrderModal, setShowAddOrderModal] = useState(false);
   const [showManageCarpenterModal, setShowManageCarpenterModal] = useState(false);
   const [showMaterialsModal, setShowMaterialsModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null); // Usado para o modal de materiais
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -43,7 +45,7 @@ function MainApp() {
     isOpen: false,
     title: '',
     message: '',
-    type: 'alert', // 'alert' or 'confirm'
+    type: 'alert',
     onConfirm: () => {},
     onCancel: () => {}
   });
@@ -73,14 +75,17 @@ function MainApp() {
     setDialog(prev => ({ ...prev, isOpen: false }));
   }, []);
 
-  // Carregar dados iniciais
-  const loadData = useCallback(async () => {
+  // Carregar dados iniciais - CORRIGIDO para sempre buscar do servidor
+  const loadData = useCallback(async (showLoadingIndicator = true) => {
     try {
-      setLoading(true);
-      setError(''); // Limpar erros anteriores
+      if (showLoadingIndicator) {
+        setLoading(true);
+      }
+      setError('');
 
       console.log('🔄 Iniciando carregamento de dados...');
 
+      // Buscar ordens e marceneiros em paralelo
       const [ordersResponse, carpentersResponse] = await Promise.all([
         ordersAPI.getAll(),
         carpentersAPI.getAll()
@@ -93,30 +98,43 @@ function MainApp() {
       const ordersData = ordersResponse.data.orders || ordersResponse.data || [];
       setOrders(ordersData);
 
-      // Processar marceneiros - extrair apenas os nomes para o dropdown
+      // Processar marceneiros - manter dados completos e extrair nomes
       const carpentersData = carpentersResponse.data.carpenters || carpentersResponse.data || [];
+      setCarpentersWithStats(carpentersData); // Dados completos com estatísticas
+      
+      // Extrair apenas os nomes para o dropdown
       const carpenterNames = carpentersData.map(c => typeof c === 'string' ? c : c.name);
-      setCarpenters(carpenterNames);
+      setCarpentersList(carpenterNames);
 
       console.log('✅ Dados carregados:', {
         ordens: ordersData.length,
-        marceneiros: carpenterNames.length
+        marceneiros: carpenterNames.length,
+        marceneirosComStats: carpentersData.length
       });
 
     } catch (err) {
       const errorMessage = 'Erro ao carregar dados: ' + (err.response?.data?.message || err.message);
       setError(errorMessage);
       console.error('❌ Erro no carregamento:', err);
-      console.error('❌ Detalhes do erro:', err.response?.data || err.message);
-      showCustomAlert('Erro de Carregamento', errorMessage); // Exibir alerta personalizado
+      showCustomAlert('Erro de Carregamento', errorMessage);
     } finally {
-      setLoading(false);
+      if (showLoadingIndicator) {
+        setLoading(false);
+      }
     }
-  }, [showCustomAlert]); // Adicionar showCustomAlert como dependência
+  }, [showCustomAlert]);
 
+  // Carregar dados na inicialização e configurar recarregamento automático
   useEffect(() => {
     loadData();
-  }, [loadData]); // Adicionar loadData como dependência
+    
+    // Recarregar dados a cada 30 segundos para manter sincronizado
+    const interval = setInterval(() => {
+      loadData(false); // Não mostrar loading indicator no recarregamento automático
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -135,7 +153,7 @@ function MainApp() {
       await ordersAPI.create(newOrder);
       setShowAddOrderModal(false);
       console.log('✅ Ordem criada, recarregando dados...');
-      await loadData(); // Recarregar todos os dados do servidor
+      await loadData(false);
       showCustomAlert('Sucesso', 'Ordem criada com sucesso!');
     } catch (err) {
       const errorMessage = 'Erro ao criar ordem: ' + (err.response?.data?.message || err.message);
@@ -149,7 +167,7 @@ function MainApp() {
       console.log('🔄 Atualizando status da ordem:', orderId, 'para:', newStatus);
       await ordersAPI.update(orderId, { status: newStatus });
       console.log('✅ Status atualizado, recarregando dados...');
-      await loadData(); // Recarregar todos os dados do servidor
+      await loadData(false);
       showCustomAlert('Sucesso', 'Status da ordem atualizado!');
     } catch (err) {
       const errorMessage = 'Erro ao atualizar status: ' + (err.response?.data?.message || err.message);
@@ -162,9 +180,9 @@ function MainApp() {
     try {
       console.log('🔄 Atualizando ordem:', updatedOrder.id);
       await ordersAPI.update(updatedOrder.id, updatedOrder);
-      setIsEditOrderModalOpen(false); // Fechar o modal de edição
+      setIsEditOrderModalOpen(false);
       console.log('✅ Ordem atualizada, recarregando dados...');
-      await loadData(); // Recarregar todos os dados do servidor
+      await loadData(false);
       showCustomAlert('Sucesso', 'Ordem atualizada com sucesso!');
     } catch (err) {
       const errorMessage = 'Erro ao atualizar ordem: ' + (err.response?.data?.message || err.message);
@@ -182,7 +200,7 @@ function MainApp() {
           console.log('🗑️ Deletando ordem:', orderId);
           await ordersAPI.delete(orderId);
           console.log('✅ Ordem deletada, recarregando dados...');
-          await loadData(); // Recarregar todos os dados do servidor
+          await loadData(false);
           showCustomAlert('Sucesso', 'Ordem excluída com sucesso!');
         } catch (err) {
           const errorMessage = 'Erro ao excluir ordem: ' + (err.response?.data?.message || err.message);
@@ -204,7 +222,7 @@ function MainApp() {
       console.log('➕ Criando novo marceneiro:', name);
       await carpentersAPI.create({ name });
       console.log('✅ Marceneiro criado, recarregando dados...');
-      await loadData(); // Recarregar todos os dados do servidor
+      await loadData(false);
       showCustomAlert('Sucesso', `Marceneiro "${name}" adicionado!`);
     } catch (err) {
       const errorMessage = 'Erro ao adicionar marceneiro: ' + (err.response?.data?.message || err.message);
@@ -220,14 +238,12 @@ function MainApp() {
       async () => {
         try {
           console.log('🗑️ Removendo marceneiro:', name);
-          // Encontrar o ID do marceneiro
-          const carpentersResponse = await carpentersAPI.getAll();
-          const carpenter = carpentersResponse.data.carpenters.find(c => c.name === name);
+          const carpenter = carpentersWithStats.find(c => c.name === name);
 
           if (carpenter) {
             await carpentersAPI.delete(carpenter.id);
             console.log('✅ Marceneiro removido, recarregando dados...');
-            await loadData(); // Recarregar todos os dados do servidor
+            await loadData(false);
             showCustomAlert('Sucesso', `Marceneiro "${name}" removido!`);
           } else {
             showCustomAlert('Erro', `Marceneiro "${name}" não encontrado.`);
@@ -258,14 +274,27 @@ function MainApp() {
       <div className="flex justify-between items-start mb-3">
         <h3 className="font-bold text-lg">{order.id}</h3>
         {canEdit() && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleDeleteOrder(order.id)}
-            className="text-red-500 hover:text-red-700"
-          >
-            <Trash2 size={16} />
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setOrderToEdit(order);
+                setIsEditOrderModalOpen(true);
+              }}
+              className="text-blue-500 hover:text-blue-700"
+            >
+              <Edit size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteOrder(order.id)}
+              className="text-red-500 hover:text-red-700"
+            >
+              <Trash2 size={16} />
+            </Button>
+          </div>
         )}
       </div>
 
@@ -279,7 +308,7 @@ function MainApp() {
               value={order.carpenter || "none"}
               onValueChange={(value) => handleUpdateOrder({ ...order, carpenter: value === "none" ? null : value })}
             >
-              <SelectTrigger className="h-8 text-sm w-40 inline-flex">
+              <SelectTrigger className="h-8 text-sm w-40 inline-flex ml-2">
                 <SelectValue placeholder="(Nenhum)" />
               </SelectTrigger>
               <SelectContent>
@@ -352,13 +381,23 @@ function MainApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6 font-inter"> {/* Adicionado font-inter */}
+    <div className="min-h-screen bg-gray-100 p-6 font-inter">
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Ordens de Serviço</h1>
 
           <div className="flex items-center gap-4">
+            <BackendConfig />
+            <Button
+              onClick={() => loadData(true)}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} />
+              Atualizar
+            </Button>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <User size={16} />
               <span>{user.username} ({user.role})</span>
@@ -381,139 +420,84 @@ function MainApp() {
           </div>
         )}
 
-        {/* Seção de Debug Visual */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <h3 className="font-bold text-yellow-800 mb-2">🔍 Debug - Status dos Dados</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <strong>Ordens carregadas:</strong> {orders.length} itens
-              {orders.length > 0 && (
-                <details className="mt-1">
-                  <summary className="cursor-pointer text-blue-600">Ver detalhes</summary>
-                  <pre className="text-xs bg-white p-2 mt-1 rounded border max-h-32 overflow-auto">
-                    {JSON.stringify(orders.slice(0, 2), null, 2)}
-                  </pre>
-                </details>
-              )}
-            </div>
-            <div>
-              <strong>Marceneiros carregados:</strong> {carpenters.length} itens
-              {carpenters.length > 0 && (
-                <details className="mt-1">
-                  <summary className="cursor-pointer text-blue-600">Ver detalhes</summary>
-                  <pre className="text-xs bg-white p-2 mt-1 rounded border max-h-32 overflow-auto">
-                    {JSON.stringify(carpenters, null, 2)}
-                  </pre>
-                </details>
-              )}
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-yellow-700">
-            💡 Esta seção pode ser removida após confirmar que os dados estão carregando corretamente
-          </div>
-        </div>
-
-        {/* Action Buttons */}
+        {/* Controles */}
         <div className="flex flex-wrap justify-center gap-4 mb-6">
           {canEdit() && (
             <Button
               onClick={() => setShowAddOrderModal(true)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+              className="bg-green-500 hover:bg-green-600 text-white"
             >
-              <Plus size={20} />
-              Adicionar Ordem
-            </Button>
-          )}
-
-          {canEdit() && (
-            <Button
-              onClick={() => setShowManageCarpenterModal(true)}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
-            >
-              <Users size={20} />
-              Gerenciar Marceneiros
+              <Plus size={16} className="mr-2" />
+              Nova Ordem
             </Button>
           )}
 
           <Button
-            onClick={() => {
-              try {
-                exportToExcel(orders, carpenters);
-                showCustomAlert('Sucesso', 'Arquivo Excel exportado com sucesso!');
-              } catch (error) {
-                showCustomAlert('Erro', 'Erro ao exportar: ' + error.message);
-                console.error('Erro na exportação:', error);
-              }
-            }}
-            className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+            onClick={() => setShowManageCarpenterModal(true)}
+            className="bg-blue-500 hover:bg-blue-600 text-white"
           >
-            <FileSpreadsheet size={20} />
+            <Users size={16} className="mr-2" />
+            Marceneiros
+          </Button>
+
+          <Button
+            onClick={() => exportToExcel(orders, carpentersWithStats)}
+            className="bg-purple-500 hover:bg-purple-600 text-white"
+          >
+            <FileSpreadsheet size={16} className="mr-2" />
             Exportar Excel
           </Button>
 
-          {/* Botão de Debug Temporário */}
-          <Button
-            onClick={() => {
-              console.log('🔄 Forçando recarregamento de dados...');
-              loadData();
-            }}
-            className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
-          >
-            🔄 Recarregar (Debug)
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setViewMode('cards')}
+              variant={viewMode === 'cards' ? 'default' : 'outline'}
+              size="sm"
+            >
+              <LayoutGrid size={16} />
+            </Button>
+            <Button
+              onClick={() => setViewMode('columns')}
+              variant={viewMode === 'columns' ? 'default' : 'outline'}
+              size="sm"
+            >
+              <List size={16} />
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6 items-end">
-        {/* Search */}
-        <div className="flex-1 min-w-64">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Buscar por Nº da Ordem
-          </label>
+        {/* Filtros */}
+        <div className="flex flex-wrap justify-center gap-4 mb-6">
           <Input
-            type="text"
-            placeholder="Ex: OS-123"
+            placeholder="Buscar por ID da ordem..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-md"
+            className="max-w-xs"
           />
-        </div>
 
-        {/* Carpenter Filter */}
-        <div className="flex-1 min-w-64">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Filtrar por Encarregado
-          </label>
           <Select value={selectedCarpenter} onValueChange={setSelectedCarpenter}>
-            <SelectTrigger className="rounded-md">
+            <SelectTrigger className="max-w-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Todos">Todos</SelectItem>
+              <SelectItem value="Todos">Todos os Marceneiros</SelectItem>
               {carpenters.map(carpenter => (
                 <SelectItem key={carpenter} value={carpenter}>{carpenter}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        {/* Status Filters */}
-        <div className="flex-1 min-w-64">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Filtrar por Status
-          </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 flex-wrap">
             {statusColumns.map(status => (
               <div key={status.key} className="flex items-center space-x-2">
                 <Checkbox
                   id={status.key}
                   checked={statusFilters[status.key]}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked) => 
                     setStatusFilters(prev => ({ ...prev, [status.key]: checked }))
                   }
                 />
-                <label htmlFor={status.key} className="text-sm">
+                <label htmlFor={status.key} className="text-sm font-medium">
                   {status.title}
                 </label>
               </div>
@@ -521,183 +505,128 @@ function MainApp() {
           </div>
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex gap-2">
-          <Button
-            variant={viewMode === 'cards' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('cards')}
-            className="rounded-md"
-          >
-            <LayoutGrid size={16} />
-          </Button>
-          <Button
-            variant={viewMode === 'lines' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('lines')}
-            className="rounded-md"
-          >
-            <List size={16} />
-          </Button>
+        {/* Estatísticas */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          {statusColumns.map(status => {
+            const count = getOrdersByStatus(status.key).length;
+            return (
+              <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
+                <div className={`w-4 h-4 ${status.color} rounded mb-2`}></div>
+                <div className="text-2xl font-bold">{count}</div>
+                <div className="text-sm text-gray-600">{status.title}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Orders Display */}
+      {/* Conteúdo Principal */}
       {viewMode === 'cards' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"> {/* Ajustado para 4 colunas em XL */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredOrders.map(order => (
+            <OrderCard key={order.id} order={order} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {statusColumns.map(status => (
-            <div key={status.key} className="bg-white rounded-lg shadow-sm">
-              <div className={`${status.color} text-white p-3 rounded-t-lg flex justify-between items-center`}>
-                <h3 className="font-semibold">{status.title}</h3>
-                <span className="bg-white bg-opacity-20 px-2 py-1 rounded text-sm text-black">
+            <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="flex items-center mb-4">
+                <div className={`w-4 h-4 ${status.color} rounded mr-2`}></div>
+                <h3 className="font-bold">{status.title}</h3>
+                <span className="ml-auto text-sm text-gray-500">
                   {getOrdersByStatus(status.key).length}
                 </span>
               </div>
-              <div className="p-4 min-h-96">
-                {getOrdersByStatus(status.key).length === 0 ? (
-                  <p className="text-gray-500 text-center">Nenhuma ordem aqui.</p>
-                ) : (
-                  getOrdersByStatus(status.key).map(order => (
-                    <OrderCard key={order.id} order={order} />
-                  ))
-                )}
+              <div className="space-y-2">
+                {getOrdersByStatus(status.key).map(order => (
+                  <OrderCard key={order.id} order={order} />
+                ))}
               </div>
             </div>
           ))}
         </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-sm overflow-x-auto"> {/* Adicionado overflow-x-auto */}
-          <div className="p-4 min-w-[700px]"> {/* Largura mínima para evitar quebra em telas menores */}
-            <div className="grid grid-cols-6 gap-4 font-semibold text-gray-700 border-b pb-2 mb-4">
-              <div>ID</div>
-              <div>Descrição</div>
-              <div>Encarregado</div>
-              <div>Estimativa de Saída</div>
-              <div>Status</div>
-              <div>Ações</div>
-            </div>
-            {filteredOrders.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">Nenhuma ordem encontrada.</p>
-            ) : (
-              filteredOrders.map(order => (
-                <div key={order.id} className="grid grid-cols-6 gap-4 py-3 border-b items-center">
-                  <div className="font-medium">{order.id}</div>
-                  <div className="text-sm truncate" title={order.description}>
-                    {order.description}
-                  </div>
-                  <div className="text-sm">{order.carpenter || '(Nenhum)'}</div>
-                  <div className="text-sm">{formatDate(order.exitDate)}</div>
-                  <div className="text-sm">
-                    {statusColumns.find(s => s.key === order.status)?.title || order.status}
-                  </div>
-                  <div className="flex gap-2">
-                    {canEdit() && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setOrderToEdit(order);
-                          setIsEditOrderModalOpen(true);
-                        }}
-                        className="rounded-md"
-                      >
-                        <Edit size={16} className="mr-1" /> Editar
-                      </Button>
-                    )}
-                    {canEdit() && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteOrder(order.id)}
-                        className="text-red-500 hover:text-red-700 rounded-md"
-                      >
-                        <Trash2 size={16} className="mr-1" /> Excluir
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+      )}
+
+      {filteredOrders.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">Nenhuma ordem encontrada</p>
         </div>
       )}
 
-      {/* Modals */}
-      {showAddOrderModal && (
-        <AddOrderModal
-          isOpen={showAddOrderModal}
-          onClose={() => setShowAddOrderModal(false)}
-          onAddOrder={handleAddOrder}
-          carpenters={carpenters} // Passar apenas os nomes dos marceneiros
-        />
-      )}
+      {/* Modais */}
+      <AddOrderModal
+        isOpen={showAddOrderModal}
+        onClose={() => setShowAddOrderModal(false)}
+        onAdd={handleAddOrder}
+        carpenters={carpenters}
+      />
 
-      {showManageCarpenterModal && (
-        <ManageCarpenterModal
-          isOpen={showManageCarpenterModal}
-          onClose={() => setShowManageCarpenterModal(false)}
-          onAddCarpenter={handleAddCarpenter}
-          onRemoveCarpenter={handleRemoveCarpenter}
-          carpenters={carpenters} // Passar apenas os nomes dos marceneiros
-        />
-      )}
+      <ManageCarpenterModal
+        isOpen={showManageCarpenterModal}
+        onClose={() => setShowManageCarpenterModal(false)}
+        carpenters={carpentersWithStats}
+        onAdd={handleAddCarpenter}
+        onRemove={handleRemoveCarpenter}
+        canEdit={canEdit()}
+      />
 
-      {/* Modal de Edição de Ordem */}
       {isEditOrderModalOpen && orderToEdit && (
         <EditOrderModal
           isOpen={isEditOrderModalOpen}
-          onClose={() => setIsEditOrderModalOpen(false)}
+          onClose={() => {
+            setIsEditOrderModalOpen(false);
+            setOrderToEdit(null);
+          }}
           order={orderToEdit}
-          onUpdateOrder={handleUpdateOrder}
+          onUpdate={handleUpdateOrder}
           carpenters={carpenters}
         />
       )}
 
-      {/* Modal de Materiais (inline, poderia ser um componente MaterialsModal.jsx) */}
+      {/* Modal de Materiais */}
       {showMaterialsModal && selectedOrder && (
         <Dialog open={showMaterialsModal} onOpenChange={setShowMaterialsModal}>
-          <DialogContent className="sm:max-w-[425px] rounded-lg">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Materiais da Ordem: {selectedOrder.id}</DialogTitle>
-              <DialogDescription>
-                Lista de materiais associados à ordem de serviço.
-              </DialogDescription>
+              <DialogTitle>Materiais - Ordem {selectedOrder.id}</DialogTitle>
             </DialogHeader>
-            <div className="py-4 max-h-96 overflow-y-auto">
+            <div className="max-h-96 overflow-y-auto">
               {selectedOrder.materials && selectedOrder.materials.length > 0 ? (
-                <ul className="list-disc pl-5 space-y-2">
+                <div className="space-y-2">
                   {selectedOrder.materials.map((material, index) => (
-                    <li key={index} className="text-gray-700">
-                      <span className="font-medium">{material.description}</span> ({material.quantity})
-                    </li>
+                    <div key={material.id || index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                      <span>{material.description}</span>
+                      <span className="text-sm text-gray-600">Qtd: {material.quantity}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
-                <p className="text-gray-500 text-center">Nenhum material cadastrado para esta ordem.</p>
+                <p className="text-gray-500 text-center py-4">Nenhum material cadastrado</p>
               )}
             </div>
             <DialogFooter>
-              <Button onClick={() => setShowMaterialsModal(false)} className="rounded-md">Fechar</Button>
+              <Button onClick={() => setShowMaterialsModal(false)}>Fechar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Modal de Alerta/Confirmação Personalizado */}
+      {/* Modal de Diálogo Personalizado */}
       <Dialog open={dialog.isOpen} onOpenChange={closeDialog}>
-        <DialogContent className="sm:max-w-[425px] rounded-lg">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{dialog.title}</DialogTitle>
             <DialogDescription>{dialog.message}</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex justify-end gap-2">
+          <DialogFooter>
             {dialog.type === 'confirm' && (
-              <Button variant="outline" onClick={dialog.onCancel} className="rounded-md">
+              <Button variant="outline" onClick={dialog.onCancel}>
                 Cancelar
               </Button>
             )}
-            <Button onClick={dialog.onConfirm || closeDialog} className="rounded-md">
-              {dialog.type === 'confirm' ? 'Confirmar' : 'Ok'}
+            <Button onClick={dialog.type === 'confirm' ? dialog.onConfirm : closeDialog}>
+              {dialog.type === 'confirm' ? 'Confirmar' : 'OK'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -709,9 +638,27 @@ function MainApp() {
 function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <AppContent />
     </AuthProvider>
   );
 }
 
+function AppContent() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return user ? <MainApp /> : <LoginPage />;
+}
+
 export default App;
+

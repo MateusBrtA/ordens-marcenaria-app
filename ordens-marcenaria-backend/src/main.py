@@ -23,9 +23,8 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Inicializar SQLAlchemy com a aplicação Flask
 db.init_app(app)
 
-# Configurar CORS para permitir requisições do frontend
-frontend_url = "https://ordens-marcenaria-app.vercel.app"
-CORS(app, resources={r"/*": {"origins": [frontend_url, "http://localhost:3000", "http://127.0.0.1:3000"]}})
+# Configurar CORS para permitir requisições do frontend - CORRIGIDO para aceitar qualquer origem
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
@@ -48,15 +47,50 @@ def create_default_admin():
         print(f"Erro ao criar usuário admin padrão: {e}")
         db.session.rollback()
 
-# Inicializar banco de dados e criar usuário admin
+def create_sample_data():
+    """Cria dados de exemplo se o banco estiver vazio"""
+    try:
+        # Verificar se já existem dados
+        existing_orders = db.session.execute(db.text("SELECT COUNT(*) FROM orders")).scalar()
+        existing_carpenters = db.session.execute(db.text("SELECT COUNT(*) FROM carpenters")).scalar()
+        
+        if existing_orders == 0 and existing_carpenters == 0:
+            print("Criando dados de exemplo...")
+            
+            # Criar marceneiros de exemplo
+            sample_carpenters = ["João Silva", "Maria Santos", "Pedro Oliveira"]
+            for name in sample_carpenters:
+                carpenter = Carpenter(name=name)
+                db.session.add(carpenter)
+            
+            db.session.commit()
+            print("Dados de exemplo criados com sucesso!")
+    except Exception as e:
+        print(f"Erro ao criar dados de exemplo: {e}")
+        db.session.rollback()
+
+# Inicializar banco de dados e criar usuário admin - CORRIGIDO para não resetar o banco
 with app.app_context():
     try:
-        # Remover todas as tabelas existentes e recriar (apenas para migração)
-        db.drop_all()
-        db.create_all()
-        create_default_admin()
+        # Verificar se o banco existe
+        db_exists = os.path.exists(database_path)
+        
+        if not db_exists:
+            print("Banco de dados não existe. Criando novo banco...")
+            db.create_all()
+            create_default_admin()
+            create_sample_data()
+        else:
+            print("Banco de dados existente encontrado. Verificando estrutura...")
+            # Apenas criar tabelas que não existem
+            db.create_all()
+            # Verificar se admin existe
+            admin = User.query.filter_by(username="admin").first()
+            if not admin:
+                create_default_admin()
+            
         print("Banco de dados SQLite inicializado com sucesso!")
-        print(f"Banco de dados criado em: {database_path}")
+        print(f"Banco de dados localizado em: {database_path}")
     except Exception as e:
         print(f"Erro ao inicializar banco de dados: {e}")
 
@@ -86,5 +120,4 @@ def serve(path):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
-
 

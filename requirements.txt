@@ -1,0 +1,22 @@
+# Dependências para o Sistema de Ordens de Marcenaria
+# Execute: pip install -r requirements.txt
+
+# Framework web
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-SQLAlchemy==3.0.5
+
+# Segurança e autenticação
+Werkzeug==2.3.7
+PyJWT==2.8.0
+
+# Banco de dados
+SQLAlchemy==2.0.21
+
+# Utilitários
+requests==2.31.0
+python-dotenv==1.0.0
+
+# Para desenvolvimento (opcional)
+python-dateutil==2.8.2
+
