@@ -30,10 +30,10 @@ CORS(app,
      resources={r"/*": {
          "origins": "*",  # Permite qualquer origem para desenvolvimento
          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         "allow_headers": ["Content-Type", "Authorization", "ngrok-skip-browser-warning"],
-         "supports_credentials": True
+         "allow_headers": ["Content-Type", "Authorization", "ngrok-skip-browser-warning", "X-Requested-With"],
+         "supports_credentials": True,
+         "expose_headers": ["Content-Type", "Authorization"]
      }})
-
 
 # Headers CORS manuais otimizados para ngrok
 @app.before_request
