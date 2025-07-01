@@ -52,3 +52,4 @@ Thumbs.db
 .pnpm-store/
 
 
+ordens-marcenaria-backend/src/database/ordens_marcenaria.db
