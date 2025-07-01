@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // URL do backend - IMPORTANTE: Atualize esta URL sempre que reiniciar o ngrok
-const API_BASE_URL = 'https://8b09-177-212-28-159.ngrok-free.app/api';
+const API_BASE_URL = 'https://ad94-177-212-28-159.ngrok-free.app/api';
 
 // Configuração otimizada para ngrok
 const api = axios.create({
@@ -10,7 +10,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     // Headers necessários para o ngrok
-    'ngrok-skip-browser-warning': 'true',
+    'ngrok-skip-browser-warning': 'false',
     'X-Requested-With': 'XMLHttpRequest'
   },
 });
@@ -23,7 +23,7 @@ api.interceptors.request.use((config) => {
   }
   
   // Garantir que os headers do ngrok sempre estejam presentes
-  config.headers['ngrok-skip-browser-warning'] = 'true';
+  config.headers['ngrok-skip-browser-warning'] = 'false';
   config.headers['X-Requested-With'] = 'XMLHttpRequest';
   
   // Log para debug (remover em produção)
