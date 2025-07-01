@@ -23,7 +23,9 @@ db.init_app(app)
 
 # Configurar CORS para permitir requisições do frontend
 frontend_url = "https://ordens-marcenaria-app.vercel.app"
-CORS(app, resources={r"/*": {"origins": [frontend_url, "http://localhost:3000", "http://127.0.0.1:3000"]}})
+CORS(app, resources={r"/*": {"origins": [frontend_url, "http://localhost:3000", "http://127.0.0.1:3000", "https://17ca-177-212-28-159.ngrok-free.app"]}} )
+
+
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
