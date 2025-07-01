@@ -3,7 +3,7 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory, jsonify, request
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from src.models.user import db, User, Carpenter
 from src.routes.user import user_bp
@@ -18,61 +18,33 @@ app.config['SECRET_KEY'] = 'a1b9f7c3e8d2a6b0f4c5d9e1a7b8f3c2d6e0a9b4f8c1d5e7'
 app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres.wdtwdyfahpuomvjxloyi:SenhaTrevo123@aws-0-sa-east-1.pooler.supabase.com:5432/postgres"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Configuração específica para ngrok
-app.config['SERVER_NAME'] = None  # Permite qualquer host
-app.config['APPLICATION_ROOT'] = '/'
-
 # Inicializar SQLAlchemy com a aplicação Flask
 db.init_app(app)
 
-# Configuração CORS mais permissiva para ngrok
+# Configurar CORS para permitir requisições do frontend
 CORS(app, 
      resources={r"/*": {
-         "origins": "*",  # Permite qualquer origem para desenvolvimento
+         "origins": ["https://ordens-marcenaria-app.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000"],
          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         "allow_headers": ["Content-Type", "Authorization", "ngrok-skip-browser-warning", "X-Requested-With"],
-         "supports_credentials": True,
-         "expose_headers": ["Content-Type", "Authorization"]
+         "allow_headers": ["Content-Type", "Authorization", "ngrok-skip-browser-warning"],
+         "supports_credentials": True
      }})
-
-# Headers CORS manuais otimizados para ngrok
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = jsonify({'status': 'ok'})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,ngrok-skip-browser-warning,X-Requested-With")
-        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-
-@app.after_request
-def after_request(response):
-    # Headers CORS para todas as respostas
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,ngrok-skip-browser-warning,X-Requested-With')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    
-    # Headers específicos para ngrok
-    response.headers.add('X-Frame-Options', 'ALLOWALL')
-    response.headers.add('X-Content-Type-Options', 'nosniff')
-    
-    return response
-
-# Middleware para logging de requisições (útil para debug)
-@app.before_request
-def log_request_info():
-    print(f"Request: {request.method} {request.url}")
-    print(f"Headers: {dict(request.headers)}")
-    if request.is_json:
-        print(f"JSON: {request.get_json()}")
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(orders_bp, url_prefix='/api')
 app.register_blueprint(carpenters_bp, url_prefix='/api')
+
+@app.after_request
+def after_request(response):
+    origin = request.headers.get('Origin')
+    if origin in ["https://ordens-marcenaria-app.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000"]:
+        response.headers.add('Access-Control-Allow-Origin', origin)
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,ngrok-skip-browser-warning')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 def create_default_admin():
     """Cria usuário admin padrão se não existir"""
@@ -102,18 +74,7 @@ with app.app_context():
 def health_check():
     return jsonify({
         'status': 'ok',
-        'message': 'API do Sistema de Ordens de Marcenaria está funcionando',
-        'ngrok_ready': True
-    }), 200
-
-# Endpoint específico para testar CORS
-@app.route('/api/test-cors', methods=['GET', 'POST', 'OPTIONS'])
-def test_cors():
-    return jsonify({
-        'status': 'ok',
-        'message': 'CORS está funcionando',
-        'method': request.method,
-        'headers': dict(request.headers)
+        'message': 'API do Sistema de Ordens de Marcenaria está funcionando'
     }), 200
 
 @app.route('/', defaults={'path': ''})
@@ -121,7 +82,7 @@ def test_cors():
 def serve(path):
     static_folder_path = app.static_folder
     if static_folder_path is None:
-        return jsonify({'message': 'API do Sistema de Ordens de Marcenaria - Ngrok Ready'}), 200
+        return jsonify({'message': 'API do Sistema de Ordens de Marcenaria'}), 200
 
     if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
@@ -130,29 +91,10 @@ def serve(path):
         if os.path.exists(index_path):
             return send_from_directory(static_folder_path, 'index.html')
         else:
-            return jsonify({'message': 'API do Sistema de Ordens de Marcenaria - Ngrok Ready'}), 200
-
-# Error handlers para melhor debugging
-@app.errorhandler(500)
-def internal_error(error):
-    print(f"Erro 500: {error}")
-    return jsonify({
-        'error': 'Erro interno do servidor',
-        'message': str(error),
-        'status': 500
-    }), 500
-
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({
-        'error': 'Endpoint não encontrado',
-        'message': str(error),
-        'status': 404
-    }), 404
+            return jsonify({'message': 'API do Sistema de Ordens de Marcenaria'}), 200
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    print(f"Iniciando servidor Flask na porta {port}")
-    print("Configurado para uso com ngrok")
     app.run(host='0.0.0.0', port=port, debug=True)
+
 
