@@ -22,16 +22,29 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 
 # Configurar CORS para permitir requisições do frontend
-frontend_url = "https://ordens-marcenaria-app.vercel.app"
-CORS(app, resources={r"/*": {"origins": [frontend_url, "http://localhost:3000", "http://127.0.0.1:3000", "https://17ca-177-212-28-159.ngrok-free.app"]}} )
-
-
+CORS(app, 
+     resources={r"/*": {
+         "origins": ["https://ordens-marcenaria-app.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000"],
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         "allow_headers": ["Content-Type", "Authorization", "ngrok-skip-browser-warning"],
+         "supports_credentials": True
+     }})
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(orders_bp, url_prefix='/api')
 app.register_blueprint(carpenters_bp, url_prefix='/api')
+
+@app.after_request
+def after_request(response):
+    origin = request.headers.get('Origin')
+    if origin in ["https://ordens-marcenaria-app.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000"]:
+        response.headers.add('Access-Control-Allow-Origin', origin)
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,ngrok-skip-browser-warning')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 def create_default_admin():
     """Cria usuário admin padrão se não existir"""
