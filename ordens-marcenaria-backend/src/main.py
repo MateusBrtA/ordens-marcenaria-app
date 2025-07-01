@@ -26,6 +26,14 @@ app.config['APPLICATION_ROOT'] = '/'
 db.init_app(app)
 
 # Configuração CORS mais permissiva para ngrok
+CORS(app, 
+     resources={r"/*": {
+         "origins": "*",  # Permite qualquer origem para desenvolvimento
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         "allow_headers": ["Content-Type", "Authorization", "ngrok-skip-browser-warning"],
+         "supports_credentials": True
+     }})
+
 
 # Headers CORS manuais otimizados para ngrok
 @app.before_request
@@ -37,6 +45,20 @@ def handle_preflight():
         response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
+
+@app.after_request
+def after_request(response):
+    # Headers CORS para todas as respostas
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,ngrok-skip-browser-warning,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    
+    # Headers específicos para ngrok
+    response.headers.add('X-Frame-Options', 'ALLOWALL')
+    response.headers.add('X-Content-Type-Options', 'nosniff')
+    
+    return response
 
 # Middleware para logging de requisições (útil para debug)
 @app.before_request
