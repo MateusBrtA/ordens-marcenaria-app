@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // URL do backend - pode ser configurada via variável de ambiente
-const API_BASE_URL = 'https://17a5-177-212-28-159.ngrok-free.app/api';
+const API_BASE_URL = 'https://17ca-177-212-28-159.ngrok-free.app/api';
 
 
 const api = axios.create({
