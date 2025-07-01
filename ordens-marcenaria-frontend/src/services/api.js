@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // URL do backend - IMPORTANTE: Atualize esta URL sempre que reiniciar o ngrok
-const API_BASE_URL = 'https://8b09-177-212-28-159.ngrok-free.app/api';
+const API_BASE_URL = 'https://b5d6-177-212-28-159.ngrok-free.app/api';
 
 // Configuração otimizada para ngrok
 const api = axios.create({
