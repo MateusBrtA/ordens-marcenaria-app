@@ -3,23 +3,20 @@ import axios from 'axios';
 // URL do backend - pode ser configurada via variável de ambiente
 const API_BASE_URL = 'https://17ca-177-212-28-159.ngrok-free.app/api';
 
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    // Header necessário para o ngrok funcionar corretamente
-    'ngrok-skip-browser-warning': 'true'
   },
 });
 
-// Interceptador atualizado
+// Interceptador para adicionar token de autenticação
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // Garantir que o header do ngrok sempre esteja presente
-  config.headers['ngrok-skip-browser-warning'] = 'true';
   return config;
 });
 
