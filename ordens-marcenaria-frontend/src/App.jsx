@@ -49,26 +49,30 @@ function MainApp() {
 const loadData = async () => {
   try {
     setLoading(true)
-    console.log('Carregando dados...')
+    console.log("Iniciando carregamento de dados...")
     
     const [ordersResponse, carpentersResponse] = await Promise.all([
       ordersAPI.getAll(),
-      carpentersAPI.getAll()
+      carpentersAPI.getAll() // <-- MUITO IMPORTANTE: usar getAll() para obter todos os dados do marceneiro
     ])
     
-    console.log('Resposta de ordens:', ordersResponse.data)
-    console.log('Resposta de marceneiros:', carpentersResponse.data)
+    console.log("Resposta de ordens (ordersResponse.data):", ordersResponse.data)
+    console.log("Resposta de marceneiros (carpentersResponse.data):", carpentersResponse.data)
     
+    // Certifique-se de que a estrutura de dados está correta
+    // O backend deve retornar { orders: [...] } e { carpenters: [...] }
     setOrders(ordersResponse.data.orders || [])
+    
+    // Para o dropdown de marceneiros, você precisa apenas dos nomes
     const carpenterNames = carpentersResponse.data.carpenters?.map(c => c.name) || []
     setCarpenters(carpenterNames)
     
-    console.log('Ordens carregadas:', ordersResponse.data.orders?.length || 0)
-    console.log('Marceneiros carregados:', carpenterNames.length)
+    console.log("Ordens carregadas (quantidade):", ordersResponse.data.orders?.length || 0)
+    console.log("Marceneiros carregados (quantidade):", carpenterNames.length)
     
   } catch (err) {
-    setError('Erro ao carregar dados: ' + (err.response?.data?.message || err.message))
-    console.error('Erro detalhado:', err)
+    setError("Erro ao carregar dados: " + (err.response?.data?.message || err.message))
+    console.error("Erro detalhado no loadData:", err.response?.data || err.message || err)
   } finally {
     setLoading(false)
   }
@@ -102,6 +106,7 @@ const loadData = async () => {
       setOrders(prev => prev.map(order =>
         order.id === orderId ? response.data.order : order
       ))
+      await loadData()
     } catch (err) {
       alert('Erro ao atualizar status: ' + (err.response?.data?.message || err.message))
     }
@@ -113,6 +118,7 @@ const loadData = async () => {
       setOrders(prev => prev.map(order =>
         order.id === updatedOrder.id ? response.data.order : order
       ))
+      await loadData()
     } catch (err) {
       alert('Erro ao atualizar ordem: ' + (err.response?.data?.message || err.message))
     }
@@ -123,6 +129,7 @@ const loadData = async () => {
       try {
         await ordersAPI.delete(orderId)
         setOrders(prev => prev.filter(order => order.id !== orderId))
+        await loadData()
       } catch (err) {
         alert('Erro ao excluir ordem: ' + (err.response?.data?.message || err.message))
       }
