@@ -79,6 +79,7 @@ function MainApp() {
       const response = await ordersAPI.create(newOrder)
       setOrders(prev => [...prev, response.data.order])
       setShowAddOrderModal(false)
+      loadData()
     } catch (err) {
       alert('Erro ao criar ordem: ' + (err.response?.data?.message || err.message))
     }
@@ -90,6 +91,7 @@ function MainApp() {
       setOrders(prev => prev.map(order =>
         order.id === orderId ? response.data.order : order
       ))
+      loadData()
     } catch (err) {
       alert('Erro ao atualizar status: ' + (err.response?.data?.message || err.message))
     }
@@ -101,6 +103,7 @@ function MainApp() {
       setOrders(prev => prev.map(order =>
         order.id === updatedOrder.id ? response.data.order : order
       ))
+      loadData()
     } catch (err) {
       alert('Erro ao atualizar ordem: ' + (err.response?.data?.message || err.message))
     }
@@ -111,6 +114,7 @@ function MainApp() {
       try {
         await ordersAPI.delete(orderId)
         setOrders(prev => prev.filter(order => order.id !== orderId))
+        loadData()
       } catch (err) {
         alert('Erro ao excluir ordem: ' + (err.response?.data?.message || err.message))
       }
@@ -122,6 +126,7 @@ function MainApp() {
       await carpentersAPI.create({ name })
       const response = await carpentersAPI.getNames()
       setCarpenters(response.data.carpenters || [])
+      loadData()
     } catch (err) {
       alert('Erro ao adicionar marceneiro: ' + (err.response?.data?.message || err.message))
     }
