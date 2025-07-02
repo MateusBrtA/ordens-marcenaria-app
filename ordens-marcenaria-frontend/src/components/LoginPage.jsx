@@ -25,45 +25,47 @@ export default function LoginPage({ onLogin }) {
 
     try {
       console.log('🔍 Iniciando processo de login...')
-
+      
       if (isLogin) {
         console.log('🔍 Dados sendo enviados:', {
           username: formData.username,
           password: formData.password
         })
-
+        
         console.log('🔍 Fazendo requisição para:', '/auth/login')
         console.log('🔍 Headers:', {
           'Accept': 'application/json, text/plain, */*',
           'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'false',
+          // 'ngrok-skip-browser-warning': 'false', // Removido, pois não é mais necessário com localtunnel
           'X-Requested-With': 'XMLHttpRequest'
         })
-
+        
         const response = await api.post('/auth/login', {
           username: formData.username,
           password: formData.password
         })
-
+        
         console.log('✅ Resposta recebida:', response)
         console.log('✅ Status da resposta:', response.status)
         console.log('✅ Data da resposta:', response.data)
-
+        
         const { token, user } = response.data
         console.log('✅ Token extraído:', token)
         console.log('✅ User extraído:', user)
-
+        
         localStorage.setItem('token', token)
         localStorage.setItem('user', JSON.stringify(user))
         console.log('✅ Dados salvos no localStorage')
-
+        
+        // Verificação de segurança antes de chamar onLogin
         if (typeof onLogin === 'function') {
           onLogin(user)
+          console.log('✅ Login concluído com sucesso')
         } else {
-          console.error('onLogin não é uma função válida')
-          window.location.reload() // ou outra ação apropriada
+          console.error('onLogin não é uma função válida. Recarregando a página.')
+          // Opcional: redirecionar manualmente ou recarregar a página
+          window.location.reload()
         }
-        console.log('✅ Login concluído com sucesso')
       } else {
         const response = await api.post('/auth/register', {
           username: formData.username,
@@ -71,7 +73,7 @@ export default function LoginPage({ onLogin }) {
           password: formData.password,
           role: formData.role
         })
-
+        
         setIsLogin(true)
         setError('')
         alert('Usuário criado com sucesso! Faça login agora.')
@@ -82,13 +84,12 @@ export default function LoginPage({ onLogin }) {
       console.error('❌ Erro message:', err.message)
       console.error('❌ Erro code:', err.code)
       console.error('❌ Erro config:', err.config)
-
+      
       setError(err.response?.data?.message || 'Erro ao processar solicitação')
     } finally {
       setLoading(false)
     }
   }
-
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -105,7 +106,7 @@ export default function LoginPage({ onLogin }) {
             {isLogin ? 'Login' : 'Cadastro'}
           </CardTitle>
           <CardDescription>
-            {isLogin
+            {isLogin 
               ? 'Entre com suas credenciais para acessar o sistema'
               : 'Crie uma nova conta para acessar o sistema'
             }
@@ -201,7 +202,7 @@ export default function LoginPage({ onLogin }) {
                 })
               }}
             >
-              {isLogin
+              {isLogin 
                 ? 'Não tem conta? Cadastre-se'
                 : 'Já tem conta? Faça login'
               }
@@ -220,4 +221,3 @@ export default function LoginPage({ onLogin }) {
     </div>
   )
 }
-

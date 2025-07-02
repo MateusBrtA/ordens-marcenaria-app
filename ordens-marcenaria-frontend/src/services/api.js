@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-// URL do backend - será configurada dinamicamente
-let API_BASE_URL = 'https://0520-177-116-239-98.ngrok-free.app/api';
+// URL do backend - ATUALIZE COM A URL DO LOCAL TUNNEL
+let API_BASE_URL = 'https://tidy-files-fix.loca.lt/api'; // EX: 'https://random-word.loca.lt/api'
 
 // Função para atualizar a URL do backend
-export const updateBackendURL = (newURL) => {
+export const updateBackendURL = (newURL ) => {
   API_BASE_URL = newURL.endsWith('/api') ? newURL : `${newURL}/api`;
   api.defaults.baseURL = API_BASE_URL;
   console.log('🔄 URL do backend atualizada para:', API_BASE_URL);
@@ -27,6 +27,8 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Removendo ngrok-skip-browser-warning, pois não é mais necessário com localtunnel
+  delete config.headers['ngrok-skip-browser-warning'];
   return config;
 });
 
@@ -44,7 +46,7 @@ api.interceptors.response.use(
     } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
       console.error('⏰ Timeout na conexão com o backend');
     } else if (error.code === 'ERR_NETWORK' || !error.response) {
-      console.error('🌐 Erro de rede - backend pode estar offline');
+      console.error('🌐 Erro de rede - backend pode estar offline ou problema de CORS/rede');
     }
     
     return Promise.reject(error);
@@ -149,4 +151,3 @@ export const testConnection = async () => {
 };
 
 export default api;
-
