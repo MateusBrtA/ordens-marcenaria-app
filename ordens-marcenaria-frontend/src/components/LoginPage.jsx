@@ -19,39 +19,71 @@ export default function LoginPage({ onLogin }) {
   const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+  e.preventDefault()
+  setLoading(true)
+  setError('')
 
-    try {
-      if (isLogin) {
-        const response = await api.post('/auth/login', {
-          username: formData.username,
-          password: formData.password
-        })
-        
-        const { token, user } = response.data
-        localStorage.setItem('token', token)
-        localStorage.setItem('user', JSON.stringify(user))
-        onLogin(user)
-      } else {
-        const response = await api.post('/auth/register', {
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-          role: formData.role
-        })
-        
-        setIsLogin(true)
-        setError('')
-        alert('Usuário criado com sucesso! Faça login agora.')
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao processar solicitação')
-    } finally {
-      setLoading(false)
+  try {
+    console.log('🔍 Iniciando processo de login...')
+    
+    if (isLogin) {
+      console.log('🔍 Dados sendo enviados:', {
+        username: formData.username,
+        password: formData.password
+      })
+      
+      console.log('🔍 Fazendo requisição para:', '/auth/login')
+      console.log('🔍 Headers:', {
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'false',
+        'X-Requested-With': 'XMLHttpRequest'
+      })
+      
+      const response = await api.post('/auth/login', {
+        username: formData.username,
+        password: formData.password
+      })
+      
+      console.log('✅ Resposta recebida:', response)
+      console.log('✅ Status da resposta:', response.status)
+      console.log('✅ Data da resposta:', response.data)
+      
+      const { token, user } = response.data
+      console.log('✅ Token extraído:', token)
+      console.log('✅ User extraído:', user)
+      
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
+      console.log('✅ Dados salvos no localStorage')
+      
+      onLogin(user)
+      console.log('✅ Login concluído com sucesso')
+    } else {
+      const response = await api.post('/auth/register', {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role
+      })
+      
+      setIsLogin(true)
+      setError('')
+      alert('Usuário criado com sucesso! Faça login agora.')
     }
+  } catch (err) {
+    console.error('❌ Erro capturado:', err)
+    console.error('❌ Erro response:', err.response)
+    console.error('❌ Erro message:', err.message)
+    console.error('❌ Erro code:', err.code)
+    console.error('❌ Erro config:', err.config)
+    
+    setError(err.response?.data?.message || 'Erro ao processar solicitação')
+  } finally {
+    setLoading(false)
   }
+}
+
 
   const handleChange = (e) => {
     setFormData(prev => ({
