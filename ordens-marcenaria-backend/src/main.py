@@ -23,12 +23,8 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Inicializar SQLAlchemy com a aplicação Flask
 db.init_app(app)
 
-# Configuração CORS mais robusta para ngrok
-CORS(app, 
-     resources={r"/*": {"origins": "*"}}, 
-     supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "ngrok-skip-browser-warning"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+# REMOVIDO: Configuração do flask-cors para evitar duplicação
+# Vamos usar apenas o middleware personalizado
 
 # Middleware personalizado para CORS (especialmente para ngrok)
 @app.before_request
