@@ -23,33 +23,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Inicializar SQLAlchemy com a aplicação Flask
 db.init_app(app)
 
-# REMOVIDO: Configuração do flask-cors para evitar duplicação
-# Vamos usar apenas o middleware personalizado
-
-# Middleware personalizado para CORS (especialmente para ngrok)
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = jsonify()
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,X-Requested-With,ngrok-skip-browser-warning")
-        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
-        response.headers.add('Access-Control-Allow-Credentials', "true")
-        return response
-
-@app.after_request
-def after_request(response):
-    # Adicionar headers CORS em todas as respostas
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,ngrok-skip-browser-warning')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    
-    # Headers específicos para ngrok
-    if 'ngrok' in request.headers.get('Host', ''):
-        response.headers.add('ngrok-skip-browser-warning', 'true')
-    
-    return response
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
