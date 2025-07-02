@@ -58,13 +58,13 @@ export function ManageCarpenterModal({ isOpen, onClose, carpenters, onAddCarpent
             {carpenters.map(carpenter => {
               const stats = getCarpenterStats(carpenter)
               return (
-                <div key={carpenter} className="border rounded-lg p-4">
+                <div key={carpenter.id} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-lg">{carpenter}</h3>
+                    <h3 className="font-semibold text-lg">{carpenter.name}</h3>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onRemoveCarpenter(carpenter)}
+                      onClick={() => onRemoveCarpenter(carpenter.name)}
                       className="text-red-500 hover:text-red-700"
                     >
                       <Trash2 size={16} />

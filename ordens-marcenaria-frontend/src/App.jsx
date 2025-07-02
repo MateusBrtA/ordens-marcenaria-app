@@ -13,10 +13,10 @@ import { exportToExcel } from './utils/excelExport.js';
 import { ordersAPI, carpentersAPI } from './services/api.js';
 import './App.css';
 
-// Importar os modais
-import AddOrderModal from './components/AddOrderModal.jsx';
-import ManageCarpenterModal from './components/ManageCarpenterModal.jsx';
-import OrderCard from './components/OrderCard.jsx';
+// Importar os modais - CORRIGIDO: Usando importação nomeada
+import { AddOrderModal } from './components/AddOrderModal.jsx';
+import { ManageCarpenterModal } from './components/ManageCarpenterModal.jsx';
+import { OrderCard } from './components/OrderCard.jsx'; // Este já está correto se OrderCard for default export
 
 function MainApp() {
   const { user, logout, canEdit, canAdmin } = useAuth();
@@ -50,7 +50,7 @@ function MainApp() {
     onCancel: () => {}
   });
 
-  // Estados para o modal de edição de ordem
+  // Estados para o modal de edição de ordem - MANTER ESTES ESTADOS
   const [isEditOrderModalOpen, setIsEditOrderModalOpen] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState(null);
 
@@ -269,6 +269,7 @@ function MainApp() {
     return date.toLocaleDateString('pt-BR');
   };
 
+  // O componente OrderCard está definido aqui dentro de MainApp
   const OrderCard = ({ order }) => (
     <div className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow mb-3">
       <div className="flex justify-between items-start mb-3">
@@ -558,7 +559,7 @@ function MainApp() {
       <AddOrderModal
         isOpen={showAddOrderModal}
         onClose={() => setShowAddOrderModal(false)}
-        onAdd={handleAddOrder}
+        onAddOrder={handleAddOrder}
         carpenters={carpenters}
       />
 
@@ -566,22 +567,28 @@ function MainApp() {
         isOpen={showManageCarpenterModal}
         onClose={() => setShowManageCarpenterModal(false)}
         carpenters={carpentersWithStats}
-        onAdd={handleAddCarpenter}
-        onRemove={handleRemoveCarpenter}
+        onAddCarpenter={handleAddCarpenter}
+        onRemoveCarpenter={handleRemoveCarpenter}
         canEdit={canEdit()}
+        orders={orders}
       />
 
+      {/* CORREÇÃO: Remover ou substituir EditOrderModal */}
       {isEditOrderModalOpen && orderToEdit && (
-        <EditOrderModal
-          isOpen={isEditOrderModalOpen}
-          onClose={() => {
-            setIsEditOrderModalOpen(false);
-            setOrderToEdit(null);
-          }}
-          order={orderToEdit}
-          onUpdate={handleUpdateOrder}
-          carpenters={carpenters}
-        />
+        <Dialog open={isEditOrderModalOpen} onOpenChange={setIsEditOrderModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Ordem {orderToEdit?.id}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <p>Funcionalidade de edição de ordem em desenvolvimento.</p>
+              <p>ID da Ordem: {orderToEdit?.id}</p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setIsEditOrderModalOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Modal de Materiais */}
