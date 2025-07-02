@@ -657,8 +657,7 @@ function AppContent() {
     );
   }
 
-  return user ? <MainApp /> : <LoginPage />;
-}
+  return user ? <MainApp /> : <LoginPage onLogin={login} />;}
 
 export default App;
 
