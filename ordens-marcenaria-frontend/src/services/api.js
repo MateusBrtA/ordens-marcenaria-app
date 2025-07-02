@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // URL do backend - será configurada dinamicamente
-let API_BASE_URL = 'https://4d99-177-212-28-159.ngrok-free.app/api';
+let API_BASE_URL = 'https://0520-177-116-239-98.ngrok-free.app/api';
 
 // Função para atualizar a URL do backend
 export const updateBackendURL = (newURL) => {
