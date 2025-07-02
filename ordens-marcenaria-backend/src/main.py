@@ -3,7 +3,7 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
 from src.models.user import db, User, Carpenter
 from src.routes.user import user_bp
@@ -23,8 +23,37 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Inicializar SQLAlchemy com a aplicação Flask
 db.init_app(app)
 
-# Configurar CORS para permitir requisições do frontend - CORRIGIDO para aceitar qualquer origem
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+# Configuração CORS mais robusta para ngrok
+CORS(app, 
+     resources={r"/*": {"origins": "*"}}, 
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "ngrok-skip-browser-warning"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+
+# Middleware personalizado para CORS (especialmente para ngrok)
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = jsonify()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,X-Requested-With,ngrok-skip-browser-warning")
+        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
+        response.headers.add('Access-Control-Allow-Credentials', "true")
+        return response
+
+@app.after_request
+def after_request(response):
+    # Adicionar headers CORS em todas as respostas
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,ngrok-skip-browser-warning')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    
+    # Headers específicos para ngrok
+    if 'ngrok' in request.headers.get('Host', ''):
+        response.headers.add('ngrok-skip-browser-warning', 'true')
+    
+    return response
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
@@ -98,7 +127,19 @@ with app.app_context():
 def health_check():
     return jsonify({
         'status': 'ok',
-        'message': 'API do Sistema de Ordens de Marcenaria está funcionando'
+        'message': 'API do Sistema de Ordens de Marcenaria está funcionando',
+        'cors_enabled': True
+    }), 200
+
+# Rota específica para testar CORS
+@app.route('/api/test-cors', methods=['GET', 'POST', 'OPTIONS'])
+def test_cors():
+    if request.method == 'OPTIONS':
+        return jsonify({'message': 'CORS preflight OK'}), 200
+    return jsonify({
+        'message': 'CORS está funcionando',
+        'method': request.method,
+        'headers': dict(request.headers)
     }), 200
 
 @app.route('/', defaults={'path': ''})

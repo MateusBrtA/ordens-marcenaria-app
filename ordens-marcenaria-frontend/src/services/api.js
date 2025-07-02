@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// URL do backend - ATUALIZE COM A URL DO LOCAL TUNNEL
-let API_BASE_URL = 'https://0520-177-116-239-98.ngrok-free.app/api'; // EX: 'https://random-word.loca.lt/api'
+// URL do backend - ATUALIZE COM A URL DO NGROK
+let API_BASE_URL = 'https://0520-177-116-239-98.ngrok-free.app/api';
 
 // Função para atualizar a URL do backend
 export const updateBackendURL = (newURL ) => {
@@ -17,26 +17,49 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json, text/plain, */*',
+    'X-Requested-With': 'XMLHttpRequest',
+    // Header específico para ngrok
+    'ngrok-skip-browser-warning': 'true'
   },
   timeout: 30000, // 30 segundos de timeout
+  withCredentials: false // Importante para CORS com ngrok
 });
 
 // Interceptador para adicionar token de autenticação
 api.interceptors.request.use((config) => {
+  console.log('🔍 Iniciando processo de login...');
+  console.log('🔍 Dados sendo enviados:', config.data);
+  console.log('🔍 Fazendo requisição para:', config.url);
+  console.log('🔍 Headers:', config.headers);
+  
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // Removendo ngrok-skip-browser-warning, pois não é mais necessário com localtunnel
-  delete config.headers['ngrok-skip-browser-warning'];
+  
+  // Garantir headers para ngrok
+  config.headers['ngrok-skip-browser-warning'] = 'true';
+  config.headers['Accept'] = 'application/json, text/plain, */*';
+  config.headers['Content-Type'] = 'application/json';
+  config.headers['X-Requested-With'] = 'XMLHttpRequest';
+  
   return config;
 });
 
 // Interceptador para tratar erros de autenticação e conexão
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ Resposta recebida:', response.status, response.data);
+    return response;
+  },
   (error) => {
     console.error('❌ Erro na API:', error.response?.data || error.message);
+    console.log('❌ Erro capturado:', error);
+    console.log('❌ Erro response:', error.response);
+    console.log('❌ Erro message:', error.message);
+    console.log('❌ Erro code:', error.code);
+    console.log('❌ Erro config:', error.config);
     
     if (error.response?.status === 401) {
       // Token expirado ou inválido
@@ -150,4 +173,18 @@ export const testConnection = async () => {
   }
 };
 
+// Função específica para testar CORS
+export const testCORS = async () => {
+  try {
+    console.log('🔍 Testando CORS...');
+    const response = await api.get('/test-cors');
+    console.log('✅ CORS OK:', response.data);
+    return true;
+  } catch (error) {
+    console.error('❌ Falha no teste de CORS:', error.message);
+    return false;
+  }
+};
+
 export default api;
+
