@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // URL do backend - ATUALIZE COM A URL DO LOCAL TUNNEL
-let API_BASE_URL = 'https://tidy-files-fix.loca.lt/api'; // EX: 'https://random-word.loca.lt/api'
+let API_BASE_URL = 'https://0520-177-116-239-98.ngrok-free.app/api'; // EX: 'https://random-word.loca.lt/api'
 
 // Função para atualizar a URL do backend
 export const updateBackendURL = (newURL ) => {
