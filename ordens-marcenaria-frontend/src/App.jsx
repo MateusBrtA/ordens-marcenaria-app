@@ -14,8 +14,9 @@ import { ordersAPI, carpentersAPI } from './services/api.js';
 import './App.css';
 
 // Importar os modais
-//import AddOrderModal from './components/AddOrderModal.jsx';
-//mport ManageCarpenterModal from './components/ManageCarpenterModal.jsx';
+import AddOrderModal from './components/AddOrderModal.jsx';
+import ManageCarpenterModal from './components/ManageCarpenterModal.jsx';
+import OrderCard from './components/OrderCard.jsx';
 
 function MainApp() {
   const { user, logout, canEdit, canAdmin } = useAuth();
