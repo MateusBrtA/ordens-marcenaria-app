@@ -14,9 +14,9 @@ import { ordersAPI, carpentersAPI } from './services/api.js';
 import './App.css';
 
 // Importar os modais
-//import AddOrderModal from './components/ui/AddOrderModal.jsx';
-//import ManageCarpenterModal from './components/ui/ManageCarpenterModal.jsx';
-//import EditOrderModal from './components/ui/edit-order-modal.jsx';
+import AddOrderModal from './components/AddOrderModal.jsx';
+import ManageCarpenterModal from './components/ManageCarpenterModal.jsx';
+import EditOrderModal from './components/EditOrderModal.jsx';
 
 function MainApp() {
   const { user, logout, canEdit, canAdmin } = useAuth();
@@ -657,8 +657,7 @@ function AppContent() {
     );
   }
 
-  return user ? <MainApp /> : <LoginPage />;
-}
+  return user ? <MainApp /> : <LoginPage onLogin={login} />;}
 
 export default App;
 
