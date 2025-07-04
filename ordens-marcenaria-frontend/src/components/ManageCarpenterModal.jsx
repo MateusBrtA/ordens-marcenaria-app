@@ -81,15 +81,19 @@ export function ManageCarpenterModal({ isOpen, onClose, carpenters, onAddCarpent
           {/* Lista de marceneiros */}
           <div className="space-y-4">
             {carpenters.map(carpenter => {
-              const stats = getCarpenterStats(carpenter)
+              // Normalizar carpenter (pode ser string ou objeto)
+              const carpenterName = typeof carpenter === 'string' ? carpenter : carpenter.name;
+              const carpenterId = typeof carpenter === 'string' ? carpenter : carpenter.id;
+              const stats = getCarpenterStats(carpenterName);
+
               return (
-                <div key={carpenter.id} className="border rounded-lg p-4">
+                <div key={carpenterId || carpenterName} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-lg">{carpenter.name}</h3>
+                    <h3 className="font-semibold text-lg">{carpenterName}</h3>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onRemoveCarpenter(carpenter.name)}
+                      onClick={() => onRemoveCarpenter(carpenterName)}
                       className="text-red-500 hover:text-red-700"
                     >
                       <Trash2 size={16} />

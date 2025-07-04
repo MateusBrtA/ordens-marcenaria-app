@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
 import { Checkbox } from '@/components/ui/checkbox.jsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog.jsx';
-import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut, User, Edit, RefreshCw } from 'lucide-react';
+import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut, User, Edit, RefreshCw, Eye } from 'lucide-react';
 import { exportToExcel } from './utils/excelExport.js';
 import { ordersAPI, carpentersAPI } from './services/api.js';
 import './App.css';
@@ -17,6 +17,7 @@ import './App.css';
 import { AddOrderModal } from './components/AddOrderModal.jsx';
 import { ManageCarpenterModal } from './components/ManageCarpenterModal.jsx';
 import { OrderCard } from './components/OrderCard.jsx'; // Este já está correto se OrderCard for default export
+import { ViewEditOrderModal } from './components/ViewEditOrderModal.jsx';
 
 function MainApp() {
   const { user, logout, canEdit, canAdmin } = useAuth();
@@ -39,6 +40,9 @@ function MainApp() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showViewEditOrderModal, setShowViewEditOrderModal] = useState(false);
+  const [selectedOrderForView, setSelectedOrderForView] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Estados para os novos modais de alerta/confirmação
   const [dialog, setDialog] = useState({
@@ -139,9 +143,7 @@ function MainApp() {
   // Adicionar este useEffect após os outros useEffect existentes
   useEffect(() => {
     if (orders.length >= 0 && carpenters.length > 0) {
-      // Recalcular estatísticas sempre que orders ou carpenters mudarem
-      const updatedCarpentersWithStats = carpenters.map(carpenterName => {
-        // carpenterName é uma string, não um objeto
+      const updatedCarpentersWithStats = carpenters.map((carpenterName, index) => {
         const carpenterOrders = orders.filter(order => order.carpenter === carpenterName);
         const total = carpenterOrders.length;
         const completed = carpenterOrders.filter(order => order.status === 'concluida').length;
@@ -156,7 +158,8 @@ function MainApp() {
         };
 
         return {
-          name: carpenterName, // Criar objeto com nome
+          id: index + 1, // CORREÇÃO: Adicionar ID baseado no índice
+          name: carpenterName,
           stats: { total, completed, inProgress, statusCounts }
         };
       });
@@ -208,15 +211,47 @@ function MainApp() {
   const handleUpdateOrder = async (updatedOrder) => {
     try {
       console.log('🔄 Atualizando ordem:', updatedOrder.id);
-      await ordersAPI.update(updatedOrder.id, updatedOrder);
-      setIsEditOrderModalOpen(false);
+
+      const originalId = selectedOrderForView?.id;
+      if (!originalId) {
+        showCustomAlert('Erro', 'ID da ordem não encontrado');
+        return;
+      }
+
+      // Validar e formatar dados antes de enviar
+      const { id, ...orderDataWithoutId } = updatedOrder;
+
+      // Garantir que datas estejam no formato correto
+      const formattedData = {
+        ...orderDataWithoutId,
+        entryDate: orderDataWithoutId.entryDate || '',
+        exitDate: orderDataWithoutId.exitDate || '',
+        materials: orderDataWithoutId.materials || [],
+        description: orderDataWithoutId.description || '',
+        status: orderDataWithoutId.status || 'recebida',
+        carpenter: orderDataWithoutId.carpenter || null
+      };
+
+      console.log('📤 Dados formatados para envio:', formattedData);
+
+      await ordersAPI.update(originalId, formattedData);
+
+      // CORREÇÃO: Resetar para modo visualização após sucesso
+      setIsEditMode(false);
+
+      // CORREÇÃO: Atualizar a ordem selecionada com os novos dados
+      const updatedOrderForView = { ...selectedOrderForView, ...updatedOrder };
+      setSelectedOrderForView(updatedOrderForView);
+
       console.log('✅ Ordem atualizada, recarregando dados...');
       await loadData(false);
       showCustomAlert('Sucesso', 'Ordem atualizada com sucesso!');
+
     } catch (err) {
       const errorMessage = 'Erro ao atualizar ordem: ' + (err.response?.data?.message || err.message);
       showCustomAlert('Erro', errorMessage);
       console.error('❌ Erro ao atualizar ordem:', err);
+      console.error('📤 Dados que causaram erro:', updatedOrder);
     }
   };
 
@@ -267,10 +302,16 @@ function MainApp() {
       async () => {
         try {
           console.log('🗑️ Removendo marceneiro:', name);
-          const carpenter = carpentersWithStats.find(c => c.name === name);
+
+          // CORREÇÃO: Buscar o marceneiro correto
+          const carpenter = carpentersWithStats.find(c =>
+            (typeof c === 'string' ? c : c.name) === name
+          );
 
           if (carpenter) {
-            await carpentersAPI.delete(carpenter.id);
+            // Se carpenter é objeto, usar o ID; se é string, usar o nome
+            const carpenterId = typeof carpenter === 'string' ? carpenter : carpenter.id;
+            await carpentersAPI.delete(carpenterId);
             console.log('✅ Marceneiro removido, recarregando dados...');
             await loadData(false);
             showCustomAlert('Sucesso', `Marceneiro "${name}" removido!`);
@@ -290,6 +331,30 @@ function MainApp() {
         closeDialog();
       }
     );
+  };
+
+  const handleViewOrder = (order) => {
+    setSelectedOrderForView(order);
+    setIsEditMode(false);
+    setShowViewEditOrderModal(true);
+  };
+
+  const handleEditOrder = (order) => {
+    setSelectedOrderForView(order);
+    setIsEditMode(true);
+    setShowViewEditOrderModal(true);
+  };
+
+  // ADICIONAR após as outras funções de manipulação
+  const handleCloseViewEditModal = () => {
+    setShowViewEditOrderModal(false);
+    setSelectedOrderForView(null);
+    setIsEditMode(false); // Sempre resetar modo edição ao fechar
+  };
+
+  // ADICIONAR função para alternar modo edição
+  const handleToggleEditMode = () => {
+    setIsEditMode(prev => !prev);
   };
 
   const formatDate = (dateString) => {
@@ -326,31 +391,43 @@ function MainApp() {
       <div className="flex justify-between items-start mb-3">
         <h3 className="font-bold text-lg">{order.id}</h3>
         {canEdit() && (
+          // No componente OrderCard interno, adicionar botões de visualizar e editar
           <div className="flex gap-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setOrderToEdit(order);
-                setIsEditOrderModalOpen(true);
-              }}
+              onClick={() => handleViewOrder(order)}
               className="text-blue-500 hover:text-blue-700"
             >
-              <Edit size={16} />
+              <Eye size={16} />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDeleteOrder(order.id)}
-              className="text-red-500 hover:text-red-700"
-            >
-              <Trash2 size={16} />
-            </Button>
+            {canEdit() && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleEditOrder(order)}
+                className="text-green-500 hover:text-green-700"
+              >
+                <Edit size={16} />
+              </Button>
+            )}
+            {canEdit() && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteOrder(order.id)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash2 size={16} />
+              </Button>
+            )}
           </div>
         )}
       </div>
 
-      <p className="text-gray-700 text-sm mb-3">{order.description}</p>
+      <p className="text-gray-700 text-sm mb-3 break-words overflow-hidden max-w-full line-clamp-3">
+        {order.description}
+      </p>
 
       <div className="space-y-2 mb-3 text-sm">
         <div>
@@ -622,6 +699,16 @@ function MainApp() {
         onRemoveCarpenter={handleRemoveCarpenter}
         canEdit={canEdit()}
         orders={orders}
+      />
+
+      <ViewEditOrderModal
+        isOpen={showViewEditOrderModal}
+        onClose={handleCloseViewEditModal} // USAR A NOVA FUNÇÃO
+        order={selectedOrderForView}
+        onUpdateOrder={handleUpdateOrder}
+        carpenters={carpenters}
+        isEditMode={isEditMode}
+        onToggleEditMode={handleToggleEditMode} // ADICIONAR ESTA PROP
       />
 
       {/* CORREÇÃO: Remover ou substituir EditOrderModal */}

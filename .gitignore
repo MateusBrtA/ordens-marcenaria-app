@@ -51,5 +51,12 @@ Thumbs.db
 /pnpm-workspace.yaml
 .pnpm-store/
 
+# Banco de dados
+*.db
+*.sqlite
+*.sqlite3
+app.db
+database.db
+instance/
 
 ordens-marcenaria-backend/src/database/ordens_marcenaria.db
