@@ -15,17 +15,42 @@ export function ManageCarpenterModal({ isOpen, onClose, carpenters, onAddCarpent
   }
 
   const getCarpenterStats = (carpenterName) => {
-    const carpenterOrders = orders.filter(order => order.carpenter === carpenterName)
-    const total = carpenterOrders.length
+    // Verificação de segurança para evitar erros
+    if (!orders || !Array.isArray(orders)) {
+      return {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        statusCounts: {
+          atrasada: 0,
+          paraHoje: 0,
+          emProcesso: 0,
+          recebida: 0,
+          concluida: 0
+        }
+      };
+    }
+
+    // Filtrar ordens do marceneiro específico
+    const carpenterOrders = orders.filter(order => order.carpenter === carpenterName);
+    const total = carpenterOrders.length;
+    const completed = carpenterOrders.filter(order => order.status === 'concluida').length;
+    const inProgress = total - completed;
+
+    // Debug: verificar quais status existem (pode remover após confirmar funcionamento)
+    console.log('Status encontrados para', carpenterName, ':', [...new Set(carpenterOrders.map(o => o.status))]);
+
+    // Calcular contadores por status - usando 'recebida' como definido no AddOrderModal
     const statusCounts = {
       atrasada: carpenterOrders.filter(o => o.status === 'atrasada').length,
       paraHoje: carpenterOrders.filter(o => o.status === 'paraHoje').length,
       emProcesso: carpenterOrders.filter(o => o.status === 'emProcesso').length,
-      recebida: carpenterOrders.filter(o => o.status === 'recebida').length,
-      concluida: carpenterOrders.filter(o => o.status === 'concluida').length
-    }
-    return { total, statusCounts }
-  }
+      recebida: carpenterOrders.filter(o => o.status === 'recebida').length, // Status correto
+      concluida: completed
+    };
+
+    return { total, completed, inProgress, statusCounts };
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -33,7 +58,7 @@ export function ManageCarpenterModal({ isOpen, onClose, carpenters, onAddCarpent
         <DialogHeader>
           <DialogTitle>Gerenciar Marceneiros</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Adicionar novo marceneiro */}
           <div className="flex gap-2">
@@ -45,7 +70,7 @@ export function ManageCarpenterModal({ isOpen, onClose, carpenters, onAddCarpent
               onKeyPress={(e) => e.key === 'Enter' && handleAddCarpenter()}
               className="flex-1"
             />
-            <Button 
+            <Button
               onClick={handleAddCarpenter}
               className="bg-green-500 hover:bg-green-600"
             >
@@ -70,7 +95,7 @@ export function ManageCarpenterModal({ isOpen, onClose, carpenters, onAddCarpent
                       <Trash2 size={16} />
                     </Button>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium">Total de ordens: </span>

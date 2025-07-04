@@ -52,9 +52,25 @@ export function OrderCard({ order, onUpdateOrder, onDeleteOrder, carpenters }) {
   }
 
   const formatDate = (dateString) => {
-    if (!dateString) return ''
-    const date = new Date(dateString)
-    return date.toLocaleDateString('pt-BR')
+    if (!dateString) return '';
+
+    // Se já é uma data formatada, retorna como está
+    if (dateString.includes('/')) return dateString;
+
+    // Se contém horário, extrair apenas a data
+    let dateOnly = dateString;
+    if (dateString.includes('T')) {
+      dateOnly = dateString.split('T')[0];
+    }
+
+    // Criar data local ao invés de UTC
+    const [year, month, day] = dateOnly.split('-');
+    const date = new Date(year, month - 1, day, 12, 0, 0); // Meio-dia para evitar problemas de timezone
+
+    // Verificar se a data é válida
+    if (isNaN(date.getTime())) return dateString;
+
+    return date.toLocaleDateString('pt-BR');
   }
 
   return (
@@ -77,8 +93,8 @@ export function OrderCard({ order, onUpdateOrder, onDeleteOrder, carpenters }) {
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2 text-sm">
             <User size={14} className="text-gray-500" />
-            <Select 
-              value={order.carpenter || ''} 
+            <Select
+              value={order.carpenter || ''}
               onValueChange={(value) => handleUpdateField('carpenter', value)}
             >
               <SelectTrigger className="h-8 text-sm">
@@ -110,8 +126,8 @@ export function OrderCard({ order, onUpdateOrder, onDeleteOrder, carpenters }) {
         </div>
 
         <div className="mb-3">
-          <Select 
-            value={order.status} 
+          <Select
+            value={order.status}
             onValueChange={(value) => handleUpdateField('status', value)}
           >
             <SelectTrigger className="h-8 text-sm">
@@ -142,7 +158,7 @@ export function OrderCard({ order, onUpdateOrder, onDeleteOrder, carpenters }) {
           <DialogHeader>
             <DialogTitle>Materiais da Ordem #{order.id}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             {/* Lista de materiais */}
             {editingOrder?.materials?.length > 0 ? (

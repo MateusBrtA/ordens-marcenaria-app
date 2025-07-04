@@ -46,8 +46,8 @@ function MainApp() {
     title: '',
     message: '',
     type: 'alert',
-    onConfirm: () => {},
-    onCancel: () => {}
+    onConfirm: () => { },
+    onCancel: () => { }
   });
 
   // Estados para o modal de edição de ordem - MANTER ESTES ESTADOS
@@ -64,7 +64,7 @@ function MainApp() {
 
   // Funções para exibir modais personalizados
   const showCustomAlert = useCallback((title, message) => {
-    setDialog({ isOpen: true, title, message, type: 'alert', onConfirm: () => {}, onCancel: () => {} });
+    setDialog({ isOpen: true, title, message, type: 'alert', onConfirm: () => { }, onCancel: () => { } });
   }, []);
 
   const showCustomConfirm = useCallback((title, message, onConfirmCallback, onCancelCallback) => {
@@ -101,7 +101,7 @@ function MainApp() {
       // Processar marceneiros - manter dados completos e extrair nomes
       const carpentersData = carpentersResponse.data.carpenters || carpentersResponse.data || [];
       setCarpentersWithStats(carpentersData); // Dados completos com estatísticas
-      
+
       // Extrair apenas os nomes para o dropdown
       const carpenterNames = carpentersData.map(c => typeof c === 'string' ? c : c.name);
       setCarpentersList(carpenterNames);
@@ -127,7 +127,7 @@ function MainApp() {
   // Carregar dados na inicialização e configurar recarregamento automático
   useEffect(() => {
     loadData();
-    
+
     // Recarregar dados a cada 30 segundos para manter sincronizado
     const interval = setInterval(() => {
       loadData(false); // Não mostrar loading indicator no recarregamento automático
@@ -135,6 +135,35 @@ function MainApp() {
 
     return () => clearInterval(interval);
   }, [loadData]);
+
+  // Adicionar este useEffect após os outros useEffect existentes
+  useEffect(() => {
+    if (orders.length >= 0 && carpenters.length > 0) {
+      // Recalcular estatísticas sempre que orders ou carpenters mudarem
+      const updatedCarpentersWithStats = carpenters.map(carpenterName => {
+        // carpenterName é uma string, não um objeto
+        const carpenterOrders = orders.filter(order => order.carpenter === carpenterName);
+        const total = carpenterOrders.length;
+        const completed = carpenterOrders.filter(order => order.status === 'concluida').length;
+        const inProgress = total - completed;
+
+        const statusCounts = {
+          atrasada: carpenterOrders.filter(o => o.status === 'atrasada').length,
+          paraHoje: carpenterOrders.filter(o => o.status === 'paraHoje').length,
+          emProcesso: carpenterOrders.filter(o => o.status === 'emProcesso').length,
+          recebida: carpenterOrders.filter(o => o.status === 'recebida').length,
+          concluida: completed
+        };
+
+        return {
+          name: carpenterName, // Criar objeto com nome
+          stats: { total, completed, inProgress, statusCounts }
+        };
+      });
+
+      setCarpentersWithStats(updatedCarpentersWithStats);
+    }
+  }, [orders, carpenters]); // Dependências: orders e carpenters
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -265,8 +294,30 @@ function MainApp() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
+
+    // Se já está no formato brasileiro (dd/mm/yyyy), retorna como está
+    if (dateString.includes('/')) return dateString;
+
+    // Se está no formato ISO (yyyy-mm-dd), converte para brasileiro
+    if (dateString.includes('-')) {
+      const parts = dateString.split('T')[0].split('-'); // Remove horário se existir
+      if (parts.length === 3) {
+        const [year, month, day] = parts;
+        return `${day}/${month}/${year}`;
+      }
+    }
+
+    // Fallback para Date (caso seja timestamp ou outro formato)
+    try {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('pt-BR');
+      }
+    } catch (e) {
+      console.warn('Erro ao formatar data:', dateString);
+    }
+
+    return dateString; // Retorna como está se não conseguir formatar
   };
 
   // O componente OrderCard está definido aqui dentro de MainApp
@@ -494,7 +545,7 @@ function MainApp() {
                 <Checkbox
                   id={status.key}
                   checked={statusFilters[status.key]}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setStatusFilters(prev => ({ ...prev, [status.key]: checked }))
                   }
                 />

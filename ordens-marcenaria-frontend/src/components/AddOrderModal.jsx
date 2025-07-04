@@ -19,14 +19,19 @@ export function AddOrderModal({ isOpen, onClose, onAddOrder, carpenters }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
     if (!formData.id || !formData.description || !formData.entryDate || !formData.exitDate) {
       alert('Por favor, preencha todos os campos obrigatórios.')
       return
     }
 
+    // CORREÇÃO DEFINITIVA: Garantir que as datas sejam tratadas como locais
     const order = {
       ...formData,
       status: 'recebida',
+      // Enviar as datas como estão, sem modificação
+      entryDate: formData.entryDate,
+      exitDate: formData.exitDate,
       createdAt: new Date().toISOString()
     }
 
