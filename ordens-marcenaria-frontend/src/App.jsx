@@ -212,7 +212,8 @@ function MainApp() {
     try {
       console.log('🔄 Atualizando ordem:', updatedOrder.id);
 
-      const originalId = selectedOrderForView?.id;
+      // CORREÇÃO: Usar o ID da própria ordem se selectedOrderForView não estiver disponível
+      const originalId = selectedOrderForView?.id || updatedOrder.id;
       if (!originalId) {
         showCustomAlert('Erro', 'ID da ordem não encontrado');
         return;
@@ -236,12 +237,14 @@ function MainApp() {
 
       await ordersAPI.update(originalId, formattedData);
 
-      // CORREÇÃO: Resetar para modo visualização após sucesso
-      setIsEditMode(false);
+      // CORREÇÃO: Resetar para modo visualização apenas se estiver no modal
+      if (selectedOrderForView) {
+        setIsEditMode(false);
 
-      // CORREÇÃO: Atualizar a ordem selecionada com os novos dados
-      const updatedOrderForView = { ...selectedOrderForView, ...updatedOrder };
-      setSelectedOrderForView(updatedOrderForView);
+        // CORREÇÃO: Atualizar a ordem selecionada com os novos dados
+        const updatedOrderForView = { ...selectedOrderForView, ...updatedOrder };
+        setSelectedOrderForView(updatedOrderForView);
+      }
 
       console.log('✅ Ordem atualizada, recarregando dados...');
       await loadData(false);
@@ -252,6 +255,20 @@ function MainApp() {
       showCustomAlert('Erro', errorMessage);
       console.error('❌ Erro ao atualizar ordem:', err);
       console.error('📤 Dados que causaram erro:', updatedOrder);
+    }
+  };
+
+  const handleUpdateOrderCarpenter = async (order, newCarpenter) => {
+    try {
+      console.log('🔄 Atualizando marceneiro da ordem:', order.id, 'para:', newCarpenter);
+      await ordersAPI.update(order.id, { carpenter: newCarpenter });
+      console.log('✅ Marceneiro atualizado, recarregando dados...');
+      await loadData(false);
+      showCustomAlert('Sucesso', 'Marceneiro atualizado com sucesso!');
+    } catch (err) {
+      const errorMessage = 'Erro ao atualizar marceneiro: ' + (err.response?.data?.message || err.message);
+      showCustomAlert('Erro', errorMessage);
+      console.error('❌ Erro ao atualizar marceneiro:', err);
     }
   };
 
@@ -435,7 +452,7 @@ function MainApp() {
           {canEdit() ? (
             <Select
               value={order.carpenter || "none"}
-              onValueChange={(value) => handleUpdateOrder({ ...order, carpenter: value === "none" ? null : value })}
+              onValueChange={(value) => handleUpdateOrderCarpenter(order, value === "none" ? null : value)}
             >
               <SelectTrigger className="h-8 text-sm w-40 inline-flex ml-2">
                 <SelectValue placeholder="(Nenhum)" />

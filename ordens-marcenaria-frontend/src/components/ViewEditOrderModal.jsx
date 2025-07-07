@@ -6,8 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog.jsx'
 import { Calendar, User, Package, Edit, Eye, Plus, X, Save, Trash2 } from 'lucide-react'
 
-export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carpenters, isEditMode: initialEditMode = false, onToggleEditMode }) {
-    const [isEditMode, setIsEditMode] = useState(initialEditMode)
+export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carpenters, isEditMode, onToggleEditMode }) {
     const [formData, setFormData] = useState({
         id: '',
         description: '',
@@ -61,7 +60,7 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
             };
 
             await onUpdateOrder(updatedOrder);
-
+            onClose();
             // NÃO resetar isEditMode aqui - será feito no App.jsx
 
         } catch (error) {
