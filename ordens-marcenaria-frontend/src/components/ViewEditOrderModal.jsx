@@ -60,7 +60,6 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
             };
 
             await onUpdateOrder(updatedOrder);
-            onClose();
             // NÃO resetar isEditMode aqui - será feito no App.jsx
 
         } catch (error) {
@@ -87,15 +86,25 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
     };
 
     const addMaterial = () => {
-        const newMaterial = {
-            id: `temp_${Date.now()}`, // CORREÇÃO: Gerar ID único temporário
-            description: '',
-            quantity: 1
+        // Validar se tem descrição
+        if (!newMaterial.description.trim()) {
+            alert('Por favor, insira uma descrição para o material.');
+            return;
+        }
+
+        const materialToAdd = {
+            id: `temp_${Date.now()}`,
+            description: newMaterial.description.trim(),
+            quantity: newMaterial.quantity || 1
         };
+
         setFormData(prev => ({
             ...prev,
-            materials: [...prev.materials, newMaterial]
+            materials: [...prev.materials, materialToAdd]
         }));
+
+        // Limpar campos após adicionar
+        setNewMaterial({ description: '', quantity: 1 });
     };
 
     const removeMaterial = (index) => {
@@ -149,7 +158,7 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
                     </DialogTitle>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form id="edit-order-form" onSubmit={handleSubmit} className="space-y-6 max-w-full overflow-hidden">
                     {/* Informações Básicas */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -205,7 +214,7 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
                                 rows={4}
                             />
                         ) : (
-                            <div className="p-3 bg-gray-50 rounded border min-h-[100px] whitespace-pre-wrap">
+                            <div className="p-3 bg-gray-50 rounded border min-h-[100px] whitespace-pre-wrap break-words overflow-wrap-anywhere max-w-full">
                                 {formData.description}
                             </div>
                         )}
@@ -271,13 +280,15 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
                             <div className="space-y-2 mb-4">
                                 {formData.materials.map((material, index) => (
                                     <div key={material.id || index} className="flex items-center justify-between bg-gray-50 p-3 rounded border">
-                                        <span>{material.description} (Qtd: {material.quantity})</span>
+                                        <span className="break-words overflow-wrap-anywhere max-w-[70%]">
+                                            {material.description} (Qtd: {material.quantity})
+                                        </span>
                                         {isEditMode && (
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => removeMaterial(material.id)}
+                                                onClick={() => removeMaterial(index)}
                                                 className="text-red-500 hover:text-red-700"
                                             >
                                                 <X size={16} />

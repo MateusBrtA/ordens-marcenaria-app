@@ -235,7 +235,17 @@ function MainApp() {
 
       console.log('📤 Dados formatados para envio:', formattedData);
 
-      await ordersAPI.update(originalId, formattedData);
+      // Enviar para o backend
+      const response = await ordersAPI.update(originalId, formattedData);
+
+      // CORREÇÃO PRINCIPAL: Atualizar a lista local de ordens imediatamente
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === originalId
+            ? { ...order, ...updatedOrder } // Mesclar dados atualizados
+            : order
+        )
+      );
 
       // CORREÇÃO: Resetar para modo visualização apenas se estiver no modal
       if (selectedOrderForView) {
@@ -246,8 +256,7 @@ function MainApp() {
         setSelectedOrderForView(updatedOrderForView);
       }
 
-      console.log('✅ Ordem atualizada, recarregando dados...');
-      await loadData(false);
+      console.log('✅ Ordem atualizada localmente e no backend');
       showCustomAlert('Sucesso', 'Ordem atualizada com sucesso!');
 
     } catch (err) {

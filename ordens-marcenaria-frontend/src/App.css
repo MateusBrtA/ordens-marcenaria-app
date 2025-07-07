@@ -129,3 +129,47 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Correções de Layout para Modal */
+.modal-content {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Quebra de linha para textos longos */
+.break-text {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Limitação de largura para elementos de texto */
+.text-container {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Correção específica para descrições */
+.description-text {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  white-space: pre-wrap;
+}
+
+/* Correção específica para materiais */
+.material-text {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 70%;
+}
+
+/* Garantir que o modal não cresça horizontalmente */
+.dialog-content {
+  max-width: 4xl;
+  width: 100%;
+  overflow-x: hidden;
+}
