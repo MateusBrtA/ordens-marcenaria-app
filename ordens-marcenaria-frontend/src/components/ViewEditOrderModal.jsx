@@ -150,7 +150,7 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[80vw] lg:max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         {isEditMode ? <Edit size={20} /> : <Eye size={20} />}
@@ -160,7 +160,7 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
 
                 <form id="edit-order-form" onSubmit={handleSubmit} className="space-y-6 max-w-full overflow-hidden">
                     {/* Informações Básicas */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium mb-2">Nº da Ordem</label>
                             {isEditMode ? (
@@ -221,7 +221,7 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
                     </div>
 
                     {/* Datas e Marceneiro */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium mb-2">Data de Entrada</label>
                             {isEditMode ? (
@@ -322,7 +322,7 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
                                         onChange={(e) => setNewMaterial(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
                                         className="w-20"
                                     />
-                                    <Button type="button" onClick={addMaterial} className="bg-blue-500 hover:bg-blue-600">
+                                    <Button type="button" onClick={addMaterial} className="bg-blue-500 hover:bg-blue-600 w-full sm:w-auto">
                                         <Plus size={16} />
                                     </Button>
                                 </div>
@@ -330,11 +330,11 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
                         )}
                     </div>
 
-                    <DialogFooter className="flex justify-between">
+                    <DialogFooter className="flex flex-col sm:flex-row justify-between gap-2">
                         <div className="flex gap-2">
                             {!isEditMode ? (
                                 <>
-                                    <Button onClick={onToggleEditMode} className="bg-blue-500 hover:bg-blue-600">
+                                    <Button onClick={onToggleEditMode} className="bg-blue-500 hover:bg-blue-600 w-full sm:w-auto">
                                         <Edit size={16} className="mr-2" />
                                         Editar
                                     </Button>
@@ -344,7 +344,7 @@ export function ViewEditOrderModal({ isOpen, onClose, order, onUpdateOrder, carp
                                 </>
                             ) : (
                                 <>
-                                    <Button type="submit" form="edit-order-form" className="bg-green-500 hover:bg-green-600">
+                                    <Button type="submit" form="edit-order-form" className="bg-green-500 hover:bg-green-600 w-full sm:w-auto">
                                         <Save size={16} className="mr-2" />
                                         Salvar
                                     </Button>

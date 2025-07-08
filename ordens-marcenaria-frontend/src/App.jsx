@@ -414,11 +414,11 @@ function MainApp() {
   // O componente OrderCard está definido aqui dentro de MainApp
   const OrderCard = ({ order }) => (
     <div className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow mb-3">
-      <div className="flex justify-between items-start mb-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start mb-3 gap-2">
         <h3 className="font-bold text-lg">{order.id}</h3>
         {canEdit() && (
           // No componente OrderCard interno, adicionar botões de visualizar e editar
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap">
             <Button
               variant="ghost"
               size="sm"
@@ -455,7 +455,7 @@ function MainApp() {
         {order.description}
       </p>
 
-      <div className="space-y-2 mb-3 text-sm">
+      <div className="space-y-2 mb-3 text-xs sm:text-sm">
         <div>
           <strong>Encarregado:</strong>
           {canEdit() ? (
@@ -463,7 +463,7 @@ function MainApp() {
               value={order.carpenter || "none"}
               onValueChange={(value) => handleUpdateOrderCarpenter(order, value === "none" ? null : value)}
             >
-              <SelectTrigger className="h-8 text-sm w-40 inline-flex ml-2">
+              <SelectTrigger className="h-8 text-xs sm:text-sm w-full sm:w-40 inline-flex ml-0 sm:ml-2 mt-1 sm:mt-0">
                 <SelectValue placeholder="(Nenhum)" />
               </SelectTrigger>
               <SelectContent>
@@ -539,10 +539,10 @@ function MainApp() {
     <div className="min-h-screen bg-gray-100 p-6 font-inter">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
           <h1 className="text-3xl font-bold text-gray-800">Ordens de Serviço</h1>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
             <BackendConfig />
             <Button
               onClick={() => loadData(true)}
@@ -576,11 +576,11 @@ function MainApp() {
         )}
 
         {/* Controles */}
-        <div className="flex flex-wrap justify-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
           {canEdit() && (
             <Button
               onClick={() => setShowAddOrderModal(true)}
-              className="bg-green-500 hover:bg-green-600 text-white"
+              className="bg-green-500 hover:bg-green-600 text-white w-full sm:w-auto"
             >
               <Plus size={16} className="mr-2" />
               Nova Ordem
@@ -589,7 +589,7 @@ function MainApp() {
 
           <Button
             onClick={() => setShowManageCarpenterModal(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white"
+            className="bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto"
           >
             <Users size={16} className="mr-2" />
             Marceneiros
@@ -597,7 +597,7 @@ function MainApp() {
 
           <Button
             onClick={() => exportToExcel(orders, carpentersWithStats)}
-            className="bg-purple-500 hover:bg-purple-600 text-white"
+            className="bg-purple-500 hover:bg-purple-600 text-white w-full sm:w-auto"
           >
             <FileSpreadsheet size={16} className="mr-2" />
             Exportar Excel
@@ -622,16 +622,16 @@ function MainApp() {
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-wrap justify-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
           <Input
             placeholder="Buscar por ID da ordem..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-xs"
+            className="w-full sm:max-w-xs"
           />
 
           <Select value={selectedCarpenter} onValueChange={setSelectedCarpenter}>
-            <SelectTrigger className="max-w-xs">
+            <SelectTrigger className="w-full sm:max-w-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -661,29 +661,28 @@ function MainApp() {
         </div>
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          {statusColumns.map(status => {
-            const count = getOrdersByStatus(status.key).length;
-            return (
-              <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
-                <div className={`w-4 h-4 ${status.color} rounded mb-2`}></div>
-                <div className="text-2xl font-bold">{count}</div>
-                <div className="text-sm text-gray-600">{status.title}</div>
-              </div>
-            );
-          })}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">          {statusColumns.map(status => {
+          const count = getOrdersByStatus(status.key).length;
+          return (
+            <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
+              <div className={`w-4 h-4 ${status.color} rounded mb-2`}></div>
+              <div className="text-2xl font-bold">{count}</div>
+              <div className="text-sm text-gray-600">{status.title}</div>
+            </div>
+          );
+        })}
         </div>
       </div>
 
       {/* Conteúdo Principal */}
       {viewMode === 'cards' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredOrders.map(order => (
             <OrderCard key={order.id} order={order} />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {statusColumns.map(status => (
             <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
               <div className="flex items-center mb-4">

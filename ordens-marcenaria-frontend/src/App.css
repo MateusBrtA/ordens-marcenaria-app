@@ -173,3 +173,91 @@
   width: 100%;
   overflow-x: hidden;
 }
+
+/* Responsividade Geral */
+@media (max-width: 640px) {
+  /* Mobile First */
+  .container {
+    padding: 1rem;
+  }
+  
+  /* Texto menor em mobile */
+  .mobile-text-sm {
+    font-size: 0.75rem;
+  }
+  
+  /* Botões full width em mobile */
+  .mobile-full-width {
+    width: 100%;
+  }
+  
+  /* Espaçamento reduzido em mobile */
+  .mobile-spacing {
+    gap: 0.5rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+  /* Tablet */
+  .container {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 769px) {
+  /* Desktop */
+  .container {
+    padding: 2rem;
+  }
+}
+
+/* Correções específicas para componentes */
+.order-card {
+  min-height: 200px;
+}
+
+@media (max-width: 640px) {
+  .order-card {
+    min-height: auto;
+  }
+  
+  .order-card .select-trigger {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-top: 0.25rem;
+  }
+}
+
+/* Modal responsivo */
+@media (max-width: 640px) {
+  .dialog-content {
+    margin: 1rem;
+    width: calc(100vw - 2rem);
+    max-width: none;
+  }
+}
+
+/* Grid responsivo personalizado */
+.responsive-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .responsive-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
