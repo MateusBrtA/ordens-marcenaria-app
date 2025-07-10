@@ -1,23 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import LoginPage from './components/LoginPage.jsx';
-import BackendConfig from './components/BackendConfig.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Input } from '@/components/ui/input.jsx';
-import { Textarea } from '@/components/ui/textarea.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
 import { Checkbox } from '@/components/ui/checkbox.jsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog.jsx';
-import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut, User, Edit, RefreshCw, Eye } from 'lucide-react';
+import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut, User, Edit, RefreshCw, Eye, Settings } from 'lucide-react';
 import { exportToExcel } from './utils/excelExport.js';
 import { ordersAPI, carpentersAPI } from './services/api.js';
 import './App.css';
 
-// Importar os modais - CORRIGIDO: Usando importação nomeada
+// Importar os modais
 import { AddOrderModal } from './components/AddOrderModal.jsx';
 import { ManageCarpenterModal } from './components/ManageCarpenterModal.jsx';
-import { OrderCard } from './components/OrderCard.jsx'; // Este já está correto se OrderCard for default export
+import { OrderCard } from './components/OrderCard.jsx';
 import { ViewEditOrderModal } from './components/ViewEditOrderModal.jsx';
+import { BackendUrlChanger } from './components/BackendUrlChanger';
+import { CardSizeSlider } from './components/CardSizeSlider';
+import { AdvancedFilters } from './components/AdvancedFilters';
+import { applyAdvancedFilters, clearAllFilters } from './utils/filterUtils';
 
 function MainApp() {
   const { user, logout, canEdit, canAdmin } = useAuth();
@@ -44,7 +46,9 @@ function MainApp() {
   const [selectedOrderForView, setSelectedOrderForView] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Estados para os novos modais de alerta/confirmação
+  const [cardGridClass, setCardGridClass] = useState('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4');
+  const [advancedFilters, setAdvancedFilters] = useState(clearAllFilters());
+
   const [dialog, setDialog] = useState({
     isOpen: false,
     title: '',
@@ -54,7 +58,6 @@ function MainApp() {
     onCancel: () => { }
   });
 
-  // Estados para o modal de edição de ordem - MANTER ESTES ESTADOS
   const [isEditOrderModalOpen, setIsEditOrderModalOpen] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState(null);
 
@@ -66,7 +69,10 @@ function MainApp() {
     { key: 'concluida', title: 'Concluída', color: 'bg-gray-500' }
   ];
 
-  // Funções para exibir modais personalizados
+  const handleCardSizeChange = useCallback((newGridClass) => {
+    setCardGridClass(newGridClass);
+  }, []);
+
   const showCustomAlert = useCallback((title, message) => {
     setDialog({ isOpen: true, title, message, type: 'alert', onConfirm: () => { }, onCancel: () => { } });
   }, []);
@@ -79,7 +85,6 @@ function MainApp() {
     setDialog(prev => ({ ...prev, isOpen: false }));
   }, []);
 
-  // Carregar dados iniciais - CORRIGIDO para sempre buscar do servidor
   const loadData = useCallback(async (showLoadingIndicator = true) => {
     try {
       if (showLoadingIndicator) {
@@ -89,7 +94,6 @@ function MainApp() {
 
       console.log('🔄 Iniciando carregamento de dados...');
 
-      // Buscar ordens e marceneiros em paralelo
       const [ordersResponse, carpentersResponse] = await Promise.all([
         ordersAPI.getAll(),
         carpentersAPI.getAll()
@@ -98,15 +102,12 @@ function MainApp() {
       console.log('📦 Resposta de ordens:', ordersResponse.data);
       console.log('👷 Resposta de marceneiros:', carpentersResponse.data);
 
-      // Processar ordens
       const ordersData = ordersResponse.data.orders || ordersResponse.data || [];
       setOrders(ordersData);
 
-      // Processar marceneiros - manter dados completos e extrair nomes
       const carpentersData = carpentersResponse.data.carpenters || carpentersResponse.data || [];
-      setCarpentersWithStats(carpentersData); // Dados completos com estatísticas
+      setCarpentersWithStats(carpentersData);
 
-      // Extrair apenas os nomes para o dropdown
       const carpenterNames = carpentersData.map(c => typeof c === 'string' ? c : c.name);
       setCarpentersList(carpenterNames);
 
@@ -128,19 +129,16 @@ function MainApp() {
     }
   }, [showCustomAlert]);
 
-  // Carregar dados na inicialização e configurar recarregamento automático
   useEffect(() => {
     loadData();
 
-    // Recarregar dados a cada 30 segundos para manter sincronizado
     const interval = setInterval(() => {
-      loadData(false); // Não mostrar loading indicator no recarregamento automático
+      loadData(false);
     }, 30000);
 
     return () => clearInterval(interval);
   }, [loadData]);
 
-  // Adicionar este useEffect após os outros useEffect existentes
   useEffect(() => {
     if (orders.length >= 0 && carpenters.length > 0) {
       const updatedCarpentersWithStats = carpenters.map((carpenterName, index) => {
@@ -158,7 +156,7 @@ function MainApp() {
         };
 
         return {
-          id: index + 1, // CORREÇÃO: Adicionar ID baseado no índice
+          id: index + 1,
           name: carpenterName,
           stats: { total, completed, inProgress, statusCounts }
         };
@@ -166,9 +164,10 @@ function MainApp() {
 
       setCarpentersWithStats(updatedCarpentersWithStats);
     }
-  }, [orders, carpenters]); // Dependências: orders e carpenters
+  }, [orders, carpenters]);
 
-  const filteredOrders = orders.filter(order => {
+  // APLICAR FILTROS AVANÇADOS AQUI
+  const filteredAndSortedOrders = applyAdvancedFilters(orders, advancedFilters).filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCarpenter = selectedCarpenter === 'Todos' || order.carpenter === selectedCarpenter;
     const matchesStatus = statusFilters[order.status];
@@ -176,7 +175,7 @@ function MainApp() {
   });
 
   const getOrdersByStatus = (status) => {
-    return filteredOrders.filter(order => order.status === status);
+    return filteredAndSortedOrders.filter(order => order.status === status);
   };
 
   const handleAddOrder = async (newOrder) => {
@@ -212,17 +211,14 @@ function MainApp() {
     try {
       console.log('🔄 Atualizando ordem:', updatedOrder.id);
 
-      // CORREÇÃO: Usar o ID da própria ordem se selectedOrderForView não estiver disponível
       const originalId = selectedOrderForView?.id || updatedOrder.id;
       if (!originalId) {
         showCustomAlert('Erro', 'ID da ordem não encontrado');
         return;
       }
 
-      // Validar e formatar dados antes de enviar
       const { id, ...orderDataWithoutId } = updatedOrder;
 
-      // Garantir que datas estejam no formato correto
       const formattedData = {
         ...orderDataWithoutId,
         entryDate: orderDataWithoutId.entryDate || '',
@@ -235,23 +231,19 @@ function MainApp() {
 
       console.log('📤 Dados formatados para envio:', formattedData);
 
-      // Enviar para o backend
       const response = await ordersAPI.update(originalId, formattedData);
 
-      // CORREÇÃO PRINCIPAL: Atualizar a lista local de ordens imediatamente
       setOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === originalId
-            ? { ...order, ...updatedOrder } // Mesclar dados atualizados
+            ? { ...order, ...updatedOrder }
             : order
         )
       );
 
-      // CORREÇÃO: Resetar para modo visualização apenas se estiver no modal
       if (selectedOrderForView) {
         setIsEditMode(false);
 
-        // CORREÇÃO: Atualizar a ordem selecionada com os novos dados
         const updatedOrderForView = { ...selectedOrderForView, ...updatedOrder };
         setSelectedOrderForView(updatedOrderForView);
       }
@@ -329,13 +321,11 @@ function MainApp() {
         try {
           console.log('🗑️ Removendo marceneiro:', name);
 
-          // CORREÇÃO: Buscar o marceneiro correto
           const carpenter = carpentersWithStats.find(c =>
             (typeof c === 'string' ? c : c.name) === name
           );
 
           if (carpenter) {
-            // Se carpenter é objeto, usar o ID; se é string, usar o nome
             const carpenterId = typeof carpenter === 'string' ? carpenter : carpenter.id;
             await carpentersAPI.delete(carpenterId);
             console.log('✅ Marceneiro removido, recarregando dados...');
@@ -371,14 +361,12 @@ function MainApp() {
     setShowViewEditOrderModal(true);
   };
 
-  // ADICIONAR após as outras funções de manipulação
   const handleCloseViewEditModal = () => {
     setShowViewEditOrderModal(false);
     setSelectedOrderForView(null);
-    setIsEditMode(false); // Sempre resetar modo edição ao fechar
+    setIsEditMode(false);
   };
 
-  // ADICIONAR função para alternar modo edição
   const handleToggleEditMode = () => {
     setIsEditMode(prev => !prev);
   };
@@ -386,19 +374,16 @@ function MainApp() {
   const formatDate = (dateString) => {
     if (!dateString) return '';
 
-    // Se já está no formato brasileiro (dd/mm/yyyy), retorna como está
     if (dateString.includes('/')) return dateString;
 
-    // Se está no formato ISO (yyyy-mm-dd), converte para brasileiro
     if (dateString.includes('-')) {
-      const parts = dateString.split('T')[0].split('-'); // Remove horário se existir
+      const parts = dateString.split('T')[0].split('-');
       if (parts.length === 3) {
         const [year, month, day] = parts;
         return `${day}/${month}/${year}`;
       }
     }
 
-    // Fallback para Date (caso seja timestamp ou outro formato)
     try {
       const date = new Date(dateString);
       if (!isNaN(date.getTime())) {
@@ -408,16 +393,14 @@ function MainApp() {
       console.warn('Erro ao formatar data:', dateString);
     }
 
-    return dateString; // Retorna como está se não conseguir formatar
+    return dateString;
   };
 
-  // O componente OrderCard está definido aqui dentro de MainApp
   const OrderCard = ({ order }) => (
     <div className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow mb-3">
       <div className="flex flex-col sm:flex-row justify-between items-start mb-3 gap-2">
         <h3 className="font-bold text-lg">{order.id}</h3>
         {canEdit() && (
-          // No componente OrderCard interno, adicionar botões de visualizar e editar
           <div className="flex gap-1 flex-wrap">
             <Button
               variant="ghost"
@@ -543,7 +526,7 @@ function MainApp() {
           <h1 className="text-3xl font-bold text-gray-800">Ordens de Serviço</h1>
 
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-            <BackendConfig />
+            <BackendUrlChanger variant="app" />
             <Button
               onClick={() => loadData(true)}
               variant="outline"
@@ -603,6 +586,10 @@ function MainApp() {
             Exportar Excel
           </Button>
 
+          <CardSizeSlider onSizeChange={handleCardSizeChange} />
+
+          <AdvancedFilters onFiltersChange={setAdvancedFilters} currentFilters={advancedFilters} />
+
           <div className="flex gap-2">
             <Button
               onClick={() => setViewMode('cards')}
@@ -661,23 +648,24 @@ function MainApp() {
         </div>
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">          {statusColumns.map(status => {
-          const count = getOrdersByStatus(status.key).length;
-          return (
-            <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
-              <div className={`w-4 h-4 ${status.color} rounded mb-2`}></div>
-              <div className="text-2xl font-bold">{count}</div>
-              <div className="text-sm text-gray-600">{status.title}</div>
-            </div>
-          );
-        })}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+          {statusColumns.map(status => {
+            const count = getOrdersByStatus(status.key).length;
+            return (
+              <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
+                <div className={`w-4 h-4 ${status.color} rounded mb-2`}></div>
+                <div className="text-2xl font-bold">{count}</div>
+                <div className="text-sm text-gray-600">{status.title}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Conteúdo Principal */}
       {viewMode === 'cards' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredOrders.map(order => (
+        <div className={`grid ${cardGridClass} gap-4`}>
+          {filteredAndSortedOrders.map(order => (
             <OrderCard key={order.id} order={order} />
           ))}
         </div>
@@ -702,7 +690,7 @@ function MainApp() {
         </div>
       )}
 
-      {filteredOrders.length === 0 && (
+      {filteredAndSortedOrders.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg">Nenhuma ordem encontrada</p>
         </div>
@@ -728,15 +716,14 @@ function MainApp() {
 
       <ViewEditOrderModal
         isOpen={showViewEditOrderModal}
-        onClose={handleCloseViewEditModal} // USAR A NOVA FUNÇÃO
+        onClose={handleCloseViewEditModal}
         order={selectedOrderForView}
         onUpdateOrder={handleUpdateOrder}
         carpenters={carpenters}
         isEditMode={isEditMode}
-        onToggleEditMode={handleToggleEditMode} // ADICIONAR ESTA PROP
+        onToggleEditMode={handleToggleEditMode}
       />
 
-      {/* CORREÇÃO: Remover ou substituir EditOrderModal */}
       {isEditOrderModalOpen && orderToEdit && (
         <Dialog open={isEditOrderModalOpen} onOpenChange={setIsEditOrderModalOpen}>
           <DialogContent>

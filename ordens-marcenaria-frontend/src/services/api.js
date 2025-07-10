@@ -1,5 +1,13 @@
 import axios from 'axios';
 
+const getStoredBackendUrl = () => {
+  return localStorage.getItem('backendUrl') || 'https://cef4-177-116-239-98.ngrok-free.app';
+};
+
+const setStoredBackendUrl = (url) => {
+  localStorage.setItem('backendUrl', url);
+};
+
 // URL do backend - ATUALIZE COM A URL DO NGROK
 let API_BASE_URL = 'https://eee1aaa3647c.ngrok-free.app/api';
 
@@ -14,17 +22,28 @@ export const updateBackendURL = (newURL ) => {
 export const getBackendURL = () => API_BASE_URL;
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getStoredBackendUrl() + '/api',
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json, text/plain, */*',
-    'X-Requested-With': 'XMLHttpRequest',
-    // Header específico para ngrok
-    'ngrok-skip-browser-warning': 'true'
   },
-  timeout: 30000, // 30 segundos de timeout
-  withCredentials: false // Importante para CORS com ngrok
 });
+
+// ADICIONAR função para atualizar a URL:
+export const updateBackendUrl = (newUrl) => {
+  // Remover barra final se existir
+  const cleanUrl = newUrl.replace(/\/$/, '');
+  setStoredBackendUrl(cleanUrl);
+  
+  // Atualizar a baseURL do axios
+  api.defaults.baseURL = cleanUrl + '/api';
+  
+  return cleanUrl;
+};
+
+export const getCurrentBackendUrl = () => {
+  return getStoredBackendUrl();
+};
 
 // Interceptador para adicionar token de autenticação
 api.interceptors.request.use((config) => {

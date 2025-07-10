@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label.jsx'
 import { Alert, AlertDescription } from '@/components/ui/alert.jsx'
 import { LogIn, UserPlus } from 'lucide-react'
 import api from '../services/api.js'
+import { BackendUrlChanger } from './BackendUrlChanger'
 
 export default function LoginPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true)
@@ -36,7 +37,6 @@ export default function LoginPage({ onLogin }) {
         console.log('🔍 Headers:', {
           'Accept': 'application/json, text/plain, */*',
           'Content-Type': 'application/json',
-          // 'ngrok-skip-browser-warning': 'false', // Removido, pois não é mais necessário com localtunnel
           'X-Requested-With': 'XMLHttpRequest'
         })
         
@@ -63,7 +63,6 @@ export default function LoginPage({ onLogin }) {
           console.log('✅ Login concluído com sucesso')
         } else {
           console.error('onLogin não é uma função válida. Recarregando a página.')
-          // Opcional: redirecionar manualmente ou recarregar a página
           window.location.reload()
         }
       } else {
@@ -99,9 +98,30 @@ export default function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative">
+      {/* Botão para alterar URL do backend */}
+      <BackendUrlChanger variant="login" />
+
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          {/* Espaço para a logo */}
+          <div className="mb-4 flex justify-center">
+            <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-20 h-20 object-contain"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <div className="hidden w-20 h-20 bg-gray-300 rounded-lg items-center justify-center text-gray-500 text-xs">
+                Logo
+              </div>
+            </div>
+          </div>
+
           <CardTitle className="text-2xl font-bold">
             {isLogin ? 'Login' : 'Cadastro'}
           </CardTitle>
@@ -208,16 +228,9 @@ export default function LoginPage({ onLogin }) {
               }
             </Button>
           </div>
-
-          {isLogin && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-md">
-              <p className="text-sm text-blue-700 font-medium">Usuário padrão:</p>
-              <p className="text-sm text-blue-600">Usuário: admin</p>
-              <p className="text-sm text-blue-600">Senha: admin123</p>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
   )
 }
+
