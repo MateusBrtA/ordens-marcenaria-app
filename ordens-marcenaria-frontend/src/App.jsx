@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import { useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
 import LoginPage from './components/LoginPage.jsx'
@@ -18,6 +19,41 @@ function MainApp() {
   const [carpenters, setCarpenters] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCarpenter, setSelectedCarpenter] = useState('Todos')
+=======
+import { useState, useEffect, useCallback } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import LoginPage from './components/LoginPage.jsx';
+import DeliveryPage from './components/DeliveryPage.jsx';
+import { Button } from '@/components/ui/button.jsx';
+import { Input } from '@/components/ui/input.jsx';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
+import { Checkbox } from '@/components/ui/checkbox.jsx';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog.jsx';
+import { Plus, Users, FileSpreadsheet, LayoutGrid, List, Trash2, X, LogOut, User, Edit, RefreshCw, Eye, Settings, Truck } from 'lucide-react';
+import { exportToExcel } from './utils/excelExport.js';
+import { ordersAPI, carpentersAPI } from './services/api.js';
+import './App.css';
+
+// Importar os modais
+import { AddOrderModal } from './components/AddOrderModal.jsx';
+import { ManageCarpenterModal } from './components/ManageCarpenterModal.jsx';
+import { OrderCard } from './components/OrderCard.jsx';
+import { ViewEditOrderModal } from './components/ViewEditOrderModal.jsx';
+import { OrderListView } from './components/OrderListView.jsx';
+import { BackendUrlChanger } from './components/BackendUrlChanger';
+import { CardSizeSlider } from './components/CardSizeSlider';
+import { AdvancedFilters } from './components/AdvancedFilters';
+import { applyAdvancedFilters, clearAllFilters } from './utils/filterUtils';
+
+function MainApp() {
+  const { user, logout, canEdit, canAdmin } = useAuth();
+  const [currentPage, setCurrentPage] = useState('orders'); // 'orders' ou 'deliveries'
+  const [orders, setOrders] = useState([]);
+  const [carpenters, setCarpentersList] = useState([]);
+  const [carpentersWithStats, setCarpentersWithStats] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCarpenter, setSelectedCarpenter] = useState('Todos');
+>>>>>>> Stashed changes
   const [statusFilters, setStatusFilters] = useState({
     atrasada: true,
     paraHoje: true,
@@ -256,10 +292,29 @@ function MainApp() {
     <div className="min-h-screen bg-gray-100 p-6">
       {/* Header */}
       <div className="text-center mb-8">
+<<<<<<< Updated upstream
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Ordens de Serviço</h1>
           
           <div className="flex items-center gap-4">
+=======
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+          <h1 className="text-3xl font-bold text-gray-800">
+            {currentPage === "orders" ? "Ordens de Serviço" : "Entregas"}
+          </h1>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+            <BackendUrlChanger variant="app" />
+            <Button
+              onClick={() => loadData(true)}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} />
+              Atualizar
+            </Button>
+>>>>>>> Stashed changes
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <User size={16} />
               <span>{user.username} ({user.role})</span>
@@ -282,9 +337,33 @@ function MainApp() {
           </div>
         )}
 
+<<<<<<< Updated upstream
         {/* Action Buttons */}
         <div className="flex justify-center gap-4 mb-6">
           {canEdit() && (
+=======
+        {/* Controles */}
+        <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
+          <Button
+            onClick={() => setCurrentPage('orders')}
+            variant={currentPage === 'orders' ? 'default' : 'outline'}
+            className="w-full sm:w-auto"
+          >
+            <LayoutGrid size={16} className="mr-2" />
+            Ordens
+          </Button>
+
+          <Button
+            onClick={() => setCurrentPage('deliveries')}
+            variant={currentPage === 'deliveries' ? 'default' : 'outline'}
+            className="w-full sm:w-auto"
+          >
+            <Truck size={16} className="mr-2" />
+            Entregas
+          </Button>
+
+          {canEdit() && currentPage === 'orders' && (
+>>>>>>> Stashed changes
             <Button
               onClick={() => setShowAddOrderModal(true)}
               className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
@@ -293,6 +372,7 @@ function MainApp() {
               Adicionar Ordem
             </Button>
           )}
+<<<<<<< Updated upstream
           
           {canEdit() && (
             <Button
@@ -319,6 +399,59 @@ function MainApp() {
             <FileSpreadsheet size={20} />
             Exportar Excel
           </Button>
+=======
+
+          {currentPage === 'orders' && (
+            <Button
+              onClick={() => setShowManageCarpenterModal(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto"
+            >
+              <Users size={16} className="mr-2" />
+              Marceneiros
+            </Button>
+          )}
+
+          {currentPage === 'orders' && (
+            <Button
+              onClick={() => exportToExcel(orders, carpentersWithStats)}
+              className="bg-purple-500 hover:bg-purple-600 text-white w-full sm:w-auto"
+            >
+              <FileSpreadsheet size={16} className="mr-2" />
+              Exportar Excel
+            </Button>
+          )}
+
+          {currentPage === 'orders' && <CardSizeSlider onSizeChange={handleCardSizeChange} />}
+
+          {currentPage === 'orders' && <AdvancedFilters onFiltersChange={setAdvancedFilters} currentFilters={advancedFilters} />}
+
+          {currentPage === 'orders' && (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setViewMode("cards")}
+                variant={viewMode === "cards" ? "default" : "outline"}
+                size="sm"
+              >
+                <LayoutGrid size={16} />
+                Kanban
+              </Button>
+              <Button
+                onClick={() => setViewMode("columns")}
+                variant={viewMode === "columns" ? "default" : "outline"}
+                size="sm"
+              >
+                <List size={16} />
+              </Button>
+              <Button
+                onClick={() => setViewMode("list")}
+                variant={viewMode === "list" ? "default" : "outline"}
+                size="sm"
+              >
+                <List size={16} />
+              </Button>
+            </div>
+          )}
+>>>>>>> Stashed changes
         </div>
       </div>
 
@@ -398,6 +531,7 @@ function MainApp() {
         </div>
       </div>
 
+<<<<<<< Updated upstream
       {/* Orders Display */}
       {viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -494,6 +628,123 @@ function MainApp() {
             )}
           </div>
         </div>
+=======
+      {/* Conteúdo Principal */}
+      {currentPage === "deliveries" ? (
+        <DeliveryPage
+          user={user}
+          logout={logout}
+          canEdit={canEdit}
+          canAdmin={canAdmin}
+          showCustomAlert={showCustomAlert}
+          showCustomConfirm={showCustomConfirm}
+          closeDialog={closeDialog}
+          dialog={dialog}
+          orders={orders}
+        />
+      ) : (
+        <>
+          {/* Filtros */}
+          <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
+            <Input
+              placeholder="Buscar por ID da ordem..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full sm:max-w-xs"
+            />
+
+            <Select value={selectedCarpenter} onValueChange={setSelectedCarpenter}>
+              <SelectTrigger className="w-full sm:max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos">Todos os Marceneiros</SelectItem>
+                {carpenters.map(carpenter => (
+                  <SelectItem key={carpenter} value={carpenter}>{carpenter}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex gap-2 flex-wrap">
+              {statusColumns.map(status => (
+                <div key={status.key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={status.key}
+                    checked={statusFilters[status.key]}
+                    onCheckedChange={(checked) =>
+                      setStatusFilters(prev => ({ ...prev, [status.key]: checked }))
+                    }
+                  />
+                  <label htmlFor={status.key} className="text-sm font-medium">
+                    {status.title}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Estatísticas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            {statusColumns.map(status => {
+              const count = getOrdersByStatus(status.key).length;
+              return (
+                <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className={`w-4 h-4 ${status.color} rounded mb-2`}></div>
+                  <div className="text-2xl font-bold">{count}</div>
+                  <div className="text-sm text-gray-600">{status.title}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Conteúdo das Ordens */}
+          {viewMode === 'list' ? (
+            <OrderListView
+              orders={filteredAndSortedOrders}
+              carpenters={carpenters}
+              onUpdateStatus={handleUpdateOrderStatus}
+              onUpdateCarpenter={handleUpdateOrderCarpenter}
+              onView={handleViewOrder}
+              onEdit={handleEditOrder}
+              onDelete={handleDeleteOrder}
+              canEdit={canEdit()}
+              formatDate={formatDate}
+              statusColumns={statusColumns}
+            />
+          ) : viewMode === 'cards' ? (
+            <div className={`grid ${cardGridClass} gap-4`}>
+              {filteredAndSortedOrders.map(order => (
+                <OrderCard key={order.id} order={order} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {statusColumns.map(status => (
+                <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center mb-4">
+                    <div className={`w-4 h-4 ${status.color} rounded mr-2`}></div>
+                    <h3 className="font-bold">{status.title}</h3>
+                    <span className="ml-auto text-sm text-gray-500">
+                      {getOrdersByStatus(status.key).length}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {getOrdersByStatus(status.key).map(order => (
+                      <OrderCard key={order.id} order={order} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {filteredAndSortedOrders.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">Nenhuma ordem encontrada</p>
+            </div>
+          )}
+        </>
+>>>>>>> Stashed changes
       )}
 
       {/* Modals */}

@@ -64,5 +64,29 @@ export const authAPI = {
   updateUser: (id, userData) => api.put(`/auth/users/${id}`, userData)
 };
 
+// Funções para gerenciar entregas
+export const deliveriesAPI = {
+  getAll: () => {
+    console.log('📦 Buscando todas as entregas...');
+    return api.get('/deliveries');
+  },
+  getById: (id) => {
+    console.log(`📦 Buscando entrega ${id}...`);
+    return api.get(`/deliveries/${id}`);
+  },
+  create: (delivery) => {
+    console.log('➕ Criando nova entrega:', delivery);
+    return api.post('/deliveries', delivery);
+  },
+  update: (id, delivery) => {
+    console.log(`🔄 Atualizando entrega ${id}:`, delivery);
+    return api.put(`/deliveries/${id}`, delivery);
+  },
+  delete: (id) => {
+    console.log(`🗑️ Deletando entrega ${id}...`);
+    return api.delete(`/deliveries/${id}`);
+  }
+};
+
 export default api;
 

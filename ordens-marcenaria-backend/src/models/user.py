@@ -114,4 +114,31 @@ class Carpenter(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'is_active': self.is_active
         }
+    
+class Delivery(db.Model):
+    id = db.Column(db.String(50), primary_key=True)
+    order_id = db.Column(db.String(50), db.ForeignKey("order.id"), nullable=True)
+    order = db.relationship("Order", backref="deliveries", lazy=True)
+    delivery_date = db.Column(db.Date, nullable=False)
+    delivery_status = db.Column(db.String(50), nullable=False, default='pendente')
+    delivery_address = db.Column(db.Text, nullable=False)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f' <Delivery {self.id}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'order_id': self.order_id,
+            'deliveryDate': self.delivery_date.isoformat() if self.delivery_date else None,
+            'deliveryStatus': self.delivery_status,
+            'deliveryAddress': self.delivery_address,
+            'notes': self.notes,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() if self.updated_at else None
+        }
+
 
