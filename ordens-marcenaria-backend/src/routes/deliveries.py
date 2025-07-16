@@ -23,26 +23,26 @@ def create_delivery(current_user):
     try:
         data = request.get_json()
         
-        if not data or not data.get('id') or not data.get('orderId') or not data.get('deliveryDate') or not data.get('deliveryAddress'):
-            return jsonify({'message': 'ID, ID da ordem, data de entrega e endereço de entrega são obrigatórios'}), 400
+        if not data or not data.get("id") or not data.get("deliveryDate") or not data.get("deliveryAddress"):
+            return jsonify({"message": "ID, data de entrega e endereço de entrega são obrigatórios"}), 400
         
         if Delivery.query.get(data['id']):
             return jsonify({'message': 'ID da entrega já existe'}), 400
-
-        if not Order.query.get(data['orderId']):
-            return jsonify({'message': 'Ordem com o ID fornecido não existe'}), 400
+        order_id = data.get("orderId")
+        if order_id:
+            if not Order.query.get(order_id):
+                return jsonify({"message": "Ordem com o ID fornecido não existe"}), 400
         
-        delivery_date = datetime.strptime(data['deliveryDate'], '%Y-%m-%d').date()
+        delivery_date = datetime.strptime(data["deliveryDate"], "%Y-%m-%d").date()
         
         delivery = Delivery(
-            id=data['id'],
-            order_id=data['orderId'],
+            id=data["id"],
+            order_id=order_id, # Usar o order_id que pode ser None
             delivery_date=delivery_date,
-            delivery_status=data.get('deliveryStatus', 'pendente'),
-            delivery_address=data['deliveryAddress'],
-            notes=data.get('notes')
+            delivery_status=data.get("deliveryStatus", "pendente"),
+            delivery_address=data["deliveryAddress"],
+            notes=data.get("notes")
         )
-        
         db.session.add(delivery)
         db.session.commit()
         
@@ -75,9 +75,10 @@ def update_delivery(current_user, delivery_id):
         data = request.get_json()
         
         if 'orderId' in data:
-            if not Order.query.get(data['orderId']):
+            order_id = data['orderId']
+            if order_id and not Order.query.get(order_id):
                 return jsonify({'message': 'Ordem com o ID fornecido não existe'}), 400
-            delivery.order_id = data['orderId']
+            delivery.order_id = order_id
         if 'deliveryDate' in data:
             delivery.delivery_date = datetime.strptime(data['deliveryDate'], '%Y-%m-%d').date()
         if 'deliveryStatus' in data:

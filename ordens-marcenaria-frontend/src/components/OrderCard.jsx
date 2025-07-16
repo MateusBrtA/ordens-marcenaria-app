@@ -94,14 +94,14 @@ export function OrderCard({ order, onUpdateOrder, onDeleteOrder, carpenters }) {
           <div className="flex items-center gap-2 text-sm">
             <User size={14} className="text-gray-500" />
             <Select
-              value={order.carpenter || ''}
-              onValueChange={(value) => handleUpdateField('carpenter', value)}
+              value={order.carpenter || 'none'}
+              onValueChange={(value) => handleUpdateField('carpenter', value === 'none' ? null : value)}
             >
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue placeholder="Não atribuído" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">(Nenhum)</SelectItem>
+                <SelectItem value="none">(Nenhum)</SelectItem>
                 {carpenters.map(carpenter => (
                   <SelectItem key={carpenter} value={carpenter}>{carpenter}</SelectItem>
                 ))}

@@ -1,24 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../contexts/AuthContext.jsx';
-import { Button } from '@/components/ui/button.jsx';
-import { Input } from '@/components/ui/input.jsx';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
-import { Checkbox } from '@/components/ui/checkbox.jsx';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog.jsx';
-import { Plus, FileSpreadsheet, LayoutGrid, List, Trash2, X, RefreshCw, Eye, Edit, User, LogOut } from 'lucide-react';
 import { deliveriesAPI, ordersAPI } from '../services/api.js';
 import { exportDeliveriesToExcel } from '../utils/excelExport.js';
 import { AddDeliveryModal } from './AddDeliveryModal.jsx';
 import { ViewEditDeliveryModal } from './ViewEditDeliveryModal.jsx';
 import { DeliveryCard } from './DeliveryCard.jsx';
 import { DeliveryListView } from './DeliveryListView.jsx';
-import { BackendUrlChanger } from './BackendUrlChanger';
+import { Button } from '@/components/ui/button.jsx';
+import { Input } from '@/components/ui/input.jsx';
+import { Checkbox } from '@/components/ui/checkbox.jsx';
+import { Plus, FileSpreadsheet, LayoutGrid, List } from 'lucide-react';
 import { CardSizeSlider } from './CardSizeSlider';
 import { AdvancedFilters } from './AdvancedFilters';
 import { applyAdvancedFilters, clearAllFilters } from '../utils/filterUtils';
 
-function DeliveryPage() {
-    const { user, logout, canEdit, canAdmin } = useAuth();
+function DeliveryPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog, formatDate, dialog }) {
     const [deliveries, setDeliveries] = useState([]);
     const [orders, setOrders] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -27,8 +22,9 @@ function DeliveryPage() {
         em_rota: true,
         entregue: true,
         cancelada: true
-    }); const [viewMode, setViewMode] = useState('cards');
-    const [deliveryViewMode, setDeliveryViewMode] = useState('cards'); const [showAddDeliveryModal, setShowAddDeliveryModal] = useState(false);
+    });
+    const [deliveryViewMode, setDeliveryViewMode] = useState('cards');
+    const [showAddDeliveryModal, setShowAddDeliveryModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showViewEditDeliveryModal, setShowViewEditDeliveryModal] = useState(false);
@@ -37,15 +33,6 @@ function DeliveryPage() {
 
     const [cardGridClass, setCardGridClass] = useState('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4');
     const [advancedFilters, setAdvancedFilters] = useState(clearAllFilters());
-
-    const [dialog, setDialog] = useState({
-        isOpen: false,
-        title: '',
-        message: '',
-        type: 'alert',
-        onConfirm: () => { },
-        onCancel: () => { }
-    });
 
     const statusColumns = [
         { key: 'pendente', title: 'Pendente', color: 'bg-yellow-500' },
@@ -56,18 +43,6 @@ function DeliveryPage() {
 
     const handleCardSizeChange = useCallback((newGridClass) => {
         setCardGridClass(newGridClass);
-    }, []);
-
-    const showCustomAlert = useCallback((title, message) => {
-        setDialog({ isOpen: true, title, message, type: 'alert', onConfirm: () => { }, onCancel: () => { } });
-    }, []);
-
-    const showCustomConfirm = useCallback((title, message, onConfirmCallback, onCancelCallback) => {
-        setDialog({ isOpen: true, title, message, type: 'confirm', onConfirm: onConfirmCallback, onCancel: onCancelCallback });
-    }, []);
-
-    const closeDialog = useCallback(() => {
-        setDialog(prev => ({ ...prev, isOpen: false }));
     }, []);
 
     const loadData = useCallback(async (showLoadingIndicator = true) => {
@@ -120,7 +95,6 @@ function DeliveryPage() {
         return () => clearInterval(interval);
     }, [loadData]);
 
-    // APLICAR FILTROS AVANÇADOS AQUI
     const filteredAndSortedDeliveries = applyAdvancedFilters(deliveries, advancedFilters).filter(delivery => {
         const matchesSearch = delivery.id.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilters[delivery.deliveryStatus];
@@ -160,9 +134,6 @@ function DeliveryPage() {
         }
     };
 
-    // Função handleUpdateDelivery corrigida para DeliveryPage.jsx
-    // Substitua a função existente por esta versão
-
     const handleUpdateDelivery = async (updatedDelivery) => {
         try {
             console.log('🔄 Atualizando entrega:', updatedDelivery.id);
@@ -181,7 +152,6 @@ function DeliveryPage() {
                 deliveryStatus: deliveryDataWithoutId.deliveryStatus || 'pendente',
                 deliveryAddress: deliveryDataWithoutId.deliveryAddress || '',
                 notes: deliveryDataWithoutId.notes || '',
-                // Garantir que tanto orderId quanto order_id sejam atualizados
                 orderId: deliveryDataWithoutId.orderId || '',
                 order_id: deliveryDataWithoutId.orderId || deliveryDataWithoutId.order_id || ''
             };
@@ -190,28 +160,24 @@ function DeliveryPage() {
 
             const response = await deliveriesAPI.update(originalId, formattedData);
 
-            // Atualizar o estado local das entregas IMEDIATAMENTE
             setDeliveries(prevDeliveries =>
                 prevDeliveries.map(delivery =>
                     delivery.id === originalId
                         ? {
                             ...delivery,
                             ...updatedDelivery,
-                            // Garantir que order_id seja atualizado no estado local
                             order_id: updatedDelivery.orderId || updatedDelivery.order_id || ''
                         }
                         : delivery
                 )
             );
 
-            // Atualizar também o selectedDeliveryForView se existir
             if (selectedDeliveryForView) {
                 setIsEditMode(false);
 
                 const updatedDeliveryForView = {
                     ...selectedDeliveryForView,
                     ...updatedDelivery,
-                    // Garantir que order_id seja atualizado na visualização
                     order_id: updatedDelivery.orderId || updatedDelivery.order_id || ''
                 };
                 setSelectedDeliveryForView(updatedDeliveryForView);
@@ -227,8 +193,6 @@ function DeliveryPage() {
             console.error('📤 Dados que causaram erro:', updatedDelivery);
         }
     };
-
-
 
     const handleDeleteDelivery = (deliveryId) => {
         showCustomConfirm(
@@ -278,31 +242,6 @@ function DeliveryPage() {
         setIsEditMode(prev => !prev);
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-
-        if (dateString.includes('/')) return dateString;
-
-        if (dateString.includes('-')) {
-            const parts = dateString.split('T')[0].split('-');
-            if (parts.length === 3) {
-                const [year, month, day] = parts;
-                return `${day}/${month}/${year}`;
-            }
-        }
-
-        try {
-            const date = new Date(dateString);
-            if (!isNaN(date.getTime())) {
-                return date.toLocaleDateString('pt-BR');
-            }
-        } catch (e) {
-            console.warn('Erro ao formatar data:', dateString);
-        }
-
-        return dateString;
-    };
-
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -315,127 +254,88 @@ function DeliveryPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 p-6 font-inter">
-            {/* Header */}
-            <div className="text-center mb-8">
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                    <h1 className="text-3xl font-bold text-gray-800">Entregas</h1>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-                        <BackendUrlChanger variant="app" />
-                        <Button
-                            onClick={() => loadData(true)}
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-2"
-                        >
-                            <RefreshCw size={16} />
-                            Atualizar
-                        </Button>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <User size={16} />
-                            <span>{user.username} ({user.role})</span>
-                        </div>
-                        <Button
-                            onClick={logout}
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700"
-                        >
-                            <LogOut size={16} className="mr-2" />
-                            Sair
-                        </Button>
-                    </div>
-                </div>
-
-                {error && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                        {error}
-                    </div>
+        <div className="p-6 font-inter">
+            {/* Controles */}
+            <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
+                {canEdit() && (
+                    <Button
+                        onClick={() => setShowAddDeliveryModal(true)}
+                        className="bg-green-500 hover:bg-green-600 text-white w-full sm:w-auto"
+                    >
+                        <Plus size={16} className="mr-2" />
+                        Nova Entrega
+                    </Button>
                 )}
 
-                {/* Controles */}
-                <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
-                    {canEdit() && (
-                        <Button
-                            onClick={() => setShowAddDeliveryModal(true)}
-                            className="bg-green-500 hover:bg-green-600 text-white w-full sm:w-auto"
-                        >
-                            <Plus size={16} className="mr-2" />
-                            Nova Entrega
-                        </Button>
-                    )}
+                <Button
+                    onClick={() => exportDeliveriesToExcel(deliveries)}
+                    className="bg-purple-500 hover:bg-purple-600 text-white w-full sm:w-auto"
+                >
+                    <FileSpreadsheet size={16} className="mr-2" />
+                    Exportar Excel
+                </Button>
 
+                <CardSizeSlider onSizeChange={handleCardSizeChange} />
+
+                <AdvancedFilters onFiltersChange={setAdvancedFilters} currentFilters={advancedFilters} />
+
+                <div className="flex gap-2">
                     <Button
-                        onClick={() => exportDeliveriesToExcel(deliveries)}
-                        className="bg-purple-500 hover:bg-purple-600 text-white w-full sm:w-auto"
+                        onClick={() => setDeliveryViewMode("cards")}
+                        variant={deliveryViewMode === "cards" ? "default" : "outline"}
+                        size="sm"
                     >
-                        <FileSpreadsheet size={16} className="mr-2" />
-                        Exportar Excel
+                        <LayoutGrid size={16} />
                     </Button>
-
-                    <CardSizeSlider onSizeChange={handleCardSizeChange} />
-
-                    <AdvancedFilters onFiltersChange={setAdvancedFilters} currentFilters={advancedFilters} />
-
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={() => setDeliveryViewMode("cards")}
-                            variant={deliveryViewMode === "cards" ? "default" : "outline"}
-                            size="sm"
-                        >
-                            <LayoutGrid size={16} />
-                        </Button>
-                        <Button
-                            onClick={() => setDeliveryViewMode("list")}
-                            variant={deliveryViewMode === "list" ? "default" : "outline"}
-                            size="sm"
-                        >
-                            <List size={16} />
-                        </Button>
-                    </div>
+                    <Button
+                        onClick={() => setDeliveryViewMode("list")}
+                        variant={deliveryViewMode === "list" ? "default" : "outline"}
+                        size="sm"
+                    >
+                        <List size={16} />
+                    </Button>
                 </div>
+            </div>
 
-                {/* Filtros */}
-                <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
-                    <Input
-                        placeholder="Buscar por ID da entrega..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full sm:max-w-xs"
-                    />
+            {/* Filtros */}
+            <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
+                <Input
+                    placeholder="Buscar por ID da entrega..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full sm:max-w-xs"
+                />
 
-                    <div className="flex gap-2 flex-wrap">
-                        {statusColumns.map(status => (
-                            <div key={status.key} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={status.key}
-                                    checked={statusFilters[status.key]}
-                                    onCheckedChange={(checked) =>
-                                        setStatusFilters(prev => ({ ...prev, [status.key]: checked }))
-                                    }
-                                />
-                                <label htmlFor={status.key} className="text-sm font-medium">
-                                    {status.title}
-                                </label>
-                            </div>
-                        ))}
-                    </div>
+                <div className="flex gap-2 flex-wrap">
+                    {statusColumns.map(status => (
+                        <div key={status.key} className="flex items-center space-x-2">
+                            <Checkbox
+                                id={status.key}
+                                checked={statusFilters[status.key]}
+                                onCheckedChange={(checked) =>
+                                    setStatusFilters(prev => ({ ...prev, [status.key]: checked }))
+                                }
+                            />
+                            <label htmlFor={status.key} className="text-sm font-medium">
+                                {status.title}
+                            </label>
+                        </div>
+                    ))}
                 </div>
+            </div>
 
-                {/* Estatísticas */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-                    {statusColumns.map(status => {
-                        const count = getDeliveriesByStatus(status.key).length;
-                        return (
-                            <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
-                                <div className={`w-4 h-4 ${status.color} rounded mb-2`}></div>
-                                <div className="text-2xl font-bold">{count}</div>
-                                <div className="text-sm text-gray-600">{status.title}</div>
-                            </div>
-                        );
-                    })}
-                </div>
+            {/* Estatísticas */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                {statusColumns.map(status => {
+                    const count = getDeliveriesByStatus(status.key).length;
+                    return (
+                        <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
+                            <div className={`w-4 h-4 ${status.color} rounded mb-2`}></div>
+                            <div className="text-2xl font-bold">{count}</div>
+                            <div className="text-sm text-gray-600">{status.title}</div>
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Conteúdo Principal */}
@@ -522,28 +422,10 @@ function DeliveryPage() {
                 isEditMode={isEditMode}
                 onToggleEditMode={handleToggleEditMode}
             />
-
-            {/* Modal de Diálogo Personalizado */}
-            <Dialog open={dialog.isOpen} onOpenChange={closeDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{dialog.title}</DialogTitle>
-                        <DialogDescription>{dialog.message}</DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        {dialog.type === 'confirm' && (
-                            <Button variant="outline" onClick={dialog.onCancel}>
-                                Cancelar
-                            </Button>
-                        )}
-                        <Button onClick={dialog.type === 'confirm' ? dialog.onConfirm : closeDialog}>
-                            {dialog.type === 'confirm' ? 'Confirmar' : 'OK'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
 
 export default DeliveryPage;
+
+
