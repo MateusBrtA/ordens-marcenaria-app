@@ -20,9 +20,13 @@ import { BackendUrlChanger } from './components/BackendUrlChanger';
 import { CardSizeSlider } from './components/CardSizeSlider';
 import { AdvancedFilters } from './components/AdvancedFilters';
 import { applyAdvancedFilters, clearAllFilters } from './utils/filterUtils';
+import DeliveryPage from './components/DeliveryPage.jsx';
+import { OrderListView } from './components/OrderListView.jsx';
+import { Truck } from 'lucide-react';
 
 function MainApp() {
   const { user, logout, canEdit, canAdmin } = useAuth();
+  const [currentPage, setCurrentPage] = useState('orders'); // 'orders' ou 'deliveries'
   const [orders, setOrders] = useState([]);
   const [carpenters, setCarpentersList] = useState([]);
   const [carpentersWithStats, setCarpentersWithStats] = useState([]);
@@ -560,7 +564,25 @@ function MainApp() {
 
         {/* Controles */}
         <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
-          {canEdit() && (
+          <Button
+            onClick={() => setCurrentPage('orders')}
+            variant={currentPage === 'orders' ? 'default' : 'outline'}
+            className="w-full sm:w-auto"
+          >
+            <LayoutGrid size={16} className="mr-2" />
+            Ordens
+          </Button>
+
+          <Button
+            onClick={() => setCurrentPage('deliveries')}
+            variant={currentPage === 'deliveries' ? 'default' : 'outline'}
+            className="w-full sm:w-auto"
+          >
+            <Truck size={16} className="mr-2" />
+            Entregas
+          </Button>
+
+          {canEdit() && currentPage === 'orders' && (
             <Button
               onClick={() => setShowAddOrderModal(true)}
               className="bg-green-500 hover:bg-green-600 text-white w-full sm:w-auto"
@@ -570,42 +592,56 @@ function MainApp() {
             </Button>
           )}
 
-          <Button
-            onClick={() => setShowManageCarpenterModal(true)}
-            className="bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto"
-          >
-            <Users size={16} className="mr-2" />
-            Marceneiros
-          </Button>
-
-          <Button
-            onClick={() => exportToExcel(orders, carpentersWithStats)}
-            className="bg-purple-500 hover:bg-purple-600 text-white w-full sm:w-auto"
-          >
-            <FileSpreadsheet size={16} className="mr-2" />
-            Exportar Excel
-          </Button>
-
-          <CardSizeSlider onSizeChange={handleCardSizeChange} />
-
-          <AdvancedFilters onFiltersChange={setAdvancedFilters} currentFilters={advancedFilters} />
-
-          <div className="flex gap-2">
+          {currentPage === 'orders' && (
             <Button
-              onClick={() => setViewMode('cards')}
-              variant={viewMode === 'cards' ? 'default' : 'outline'}
-              size="sm"
+              onClick={() => setShowManageCarpenterModal(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto"
             >
-              <LayoutGrid size={16} />
+              <Users size={16} className="mr-2" />
+              Marceneiros
             </Button>
+          )}
+
+          {currentPage === 'orders' && (
             <Button
-              onClick={() => setViewMode('columns')}
-              variant={viewMode === 'columns' ? 'default' : 'outline'}
-              size="sm"
+              onClick={() => exportToExcel(orders, carpentersWithStats)}
+              className="bg-purple-500 hover:bg-purple-600 text-white w-full sm:w-auto"
             >
-              <List size={16} />
+              <FileSpreadsheet size={16} className="mr-2" />
+              Exportar Excel
             </Button>
-          </div>
+          )}
+
+          {currentPage === 'orders' && <CardSizeSlider onSizeChange={handleCardSizeChange} />}
+
+          {currentPage === 'orders' && <AdvancedFilters onFiltersChange={setAdvancedFilters} currentFilters={advancedFilters} />}
+
+          {currentPage === 'orders' && (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setViewMode('cards')}
+                variant={viewMode === 'cards' ? 'default' : 'outline'}
+                size="sm"
+              >
+                <LayoutGrid size={16} />
+              </Button>
+              <Button
+                onClick={() => setViewMode('columns')}
+                variant={viewMode === 'columns' ? 'default' : 'outline'}
+                size="sm"
+              >
+                <List size={16} />
+              </Button>
+              <Button
+                onClick={() => setViewMode('list')}
+                variant={viewMode === 'list' ? 'default' : 'outline'}
+                size="sm"
+              >
+                <List size={16} />
+                Lista
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Filtros */}
@@ -663,31 +699,67 @@ function MainApp() {
       </div>
 
       {/* Conteúdo Principal */}
-      {viewMode === 'cards' ? (
-        <div className={`grid ${cardGridClass} gap-4`}>
-          {filteredAndSortedOrders.map(order => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-        </div>
+      {currentPage === 'deliveries' ? (
+        <DeliveryPage />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {statusColumns.map(status => (
-            <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
-              <div className="flex items-center mb-4">
-                <div className={`w-4 h-4 ${status.color} rounded mr-2`}></div>
-                <h3 className="font-bold">{status.title}</h3>
-                <span className="ml-auto text-sm text-gray-500">
-                  {getOrdersByStatus(status.key).length}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {getOrdersByStatus(status.key).map(order => (
-                  <OrderCard key={order.id} order={order} />
-                ))}
-              </div>
+        <>
+          {/* Filtros */}
+          <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 mb-6">
+            {/* ... código dos filtros existente ... */}
+          </div>
+
+          {/* Estatísticas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            {/* ... código das estatísticas existente ... */}
+          </div>
+
+          {/* Conteúdo das Ordens */}
+          {viewMode === 'list' ? (
+            <OrderListView
+              orders={filteredAndSortedOrders}
+              carpenters={carpenters}
+              onUpdateStatus={handleUpdateOrderStatus}
+              onUpdateCarpenter={handleUpdateOrderCarpenter}
+              onView={handleViewOrder}
+              onEdit={handleEditOrder}
+              onDelete={handleDeleteOrder}
+              canEdit={canEdit()}
+              formatDate={formatDate}
+              statusColumns={statusColumns}
+            />
+          ) : viewMode === 'cards' ? (
+            <div className={`grid ${cardGridClass} gap-4`}>
+              {filteredAndSortedOrders.map(order => (
+                <OrderCard key={order.id} order={order} />
+              ))}
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {statusColumns.map(status => (
+                <div key={status.key} className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center mb-4">
+                    <div className={`w-4 h-4 ${status.color} rounded mr-2`}></div>
+                    <h3 className="font-bold">{status.title}</h3>
+                    <span className="ml-auto text-sm text-gray-500">
+                      {getOrdersByStatus(status.key).length}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {getOrdersByStatus(status.key).map(order => (
+                      <OrderCard key={order.id} order={order} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {filteredAndSortedOrders.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">Nenhuma ordem encontrada</p>
+            </div>
+          )}
+        </>
       )}
 
       {filteredAndSortedOrders.length === 0 && (
@@ -818,4 +890,3 @@ function AppContent() {
 }
 
 export default App;
-

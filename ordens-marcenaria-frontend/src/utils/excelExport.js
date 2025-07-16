@@ -120,3 +120,65 @@ const formatDateForExcel = (dateString) => {
   }
 }
 
+export const exportDeliveriesToExcel = (deliveries) => {
+  console.log('📊 Exportando entregas para Excel:', { deliveries: deliveries.length });
+
+  // Preparar dados das entregas
+  const deliveriesData = deliveries.map(delivery => ({
+    'ID da Entrega': delivery.id,
+    'ID da Ordem': delivery.order_id,
+    'Data de Entrega': formatDateForExcel(delivery.deliveryDate),
+    'Status': getDeliveryStatusLabel(delivery.deliveryStatus),
+    'Endereço de Entrega': delivery.deliveryAddress,
+    'Observações': delivery.notes || 'Nenhuma',
+    'Criado em': formatDateForExcel(delivery.createdAt),
+    'Atualizado em': formatDateForExcel(delivery.updatedAt)
+  }));
+
+  // Preparar resumo das entregas
+  const totalDeliveries = deliveries.length;
+  const statusSummary = {
+    'Pendentes': deliveries.filter(d => d.deliveryStatus === 'pendente').length,
+    'Em Rota': deliveries.filter(d => d.deliveryStatus === 'em_rota').length,
+    'Entregues': deliveries.filter(d => d.deliveryStatus === 'entregue').length,
+    'Canceladas': deliveries.filter(d => d.deliveryStatus === 'cancelada').length
+  };
+
+  const summaryData = [
+    { 'Métrica': 'Total de Entregas', 'Valor': totalDeliveries },
+    ...Object.entries(statusSummary).map(([status, count]) => ({
+      'Métrica': `Entregas ${status}`,
+      'Valor': count
+    }))
+  ];
+
+  // Criar workbook
+  const workbook = XLSX.utils.book_new();
+
+  // Adicionar planilha de resumo
+  const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
+  XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Resumo');
+
+  // Adicionar planilha de entregas
+  const deliveriesWorksheet = XLSX.utils.json_to_sheet(deliveriesData);
+  XLSX.utils.book_append_sheet(workbook, deliveriesWorksheet, 'Entregas');
+
+  // Gerar arquivo com timestamp
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+  const fileName = `entregas_marcenaria_${timestamp}.xlsx`;
+  
+  console.log('💾 Salvando arquivo:', fileName);
+  XLSX.writeFile(workbook, fileName);
+  
+  console.log('✅ Arquivo Excel de entregas exportado com sucesso!');
+}
+
+const getDeliveryStatusLabel = (status) => {
+  const statusMap = {
+    pendente: 'Pendente',
+    em_rota: 'Em Rota',
+    entregue: 'Entregue',
+    cancelada: 'Cancelada'
+  };
+  return statusMap[status] || status;
+}

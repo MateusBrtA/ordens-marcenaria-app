@@ -16,7 +16,7 @@ class User(db.Model):
     is_active = db.Column(db.Boolean, default=True)
 
     def __repr__(self):
-        return f'<User {self.username}>'
+        return f' <User {self.username}>'
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -67,7 +67,7 @@ class Order(db.Model):
     materials = db.relationship('Material', backref='order', lazy=True, cascade='all, delete-orphan')
 
     def __repr__(self):
-        return f'<Order {self.id}>'
+        return f' <Order {self.id}>'
 
     def to_dict(self):
         return {
@@ -89,7 +89,7 @@ class Material(db.Model):
     order_id = db.Column(db.String(50), db.ForeignKey('order.id'), nullable=False)
 
     def __repr__(self):
-        return f'<Material {self.description}>'
+        return f' <Material {self.description}>'
 
     def to_dict(self):
         return {
@@ -105,7 +105,7 @@ class Carpenter(db.Model):
     is_active = db.Column(db.Boolean, default=True)
 
     def __repr__(self):
-        return f'<Carpenter {self.name}>'
+        return f' <Carpenter {self.name}>'
 
     def to_dict(self):
         return {
@@ -114,4 +114,31 @@ class Carpenter(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'is_active': self.is_active
         }
+
+class Delivery(db.Model):
+    id = db.Column(db.String(50), primary_key=True)
+    order_id = db.Column(db.String(50), db.ForeignKey("order.id"), nullable=True)
+    order = db.relationship("Order", backref="deliveries", lazy=True)
+    delivery_date = db.Column(db.Date, nullable=False)
+    delivery_status = db.Column(db.String(50), nullable=False, default='pendente')
+    delivery_address = db.Column(db.Text, nullable=False)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f' <Delivery {self.id}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'order_id': self.order_id,
+            'deliveryDate': self.delivery_date.isoformat() if self.delivery_date else None,
+            'deliveryStatus': self.delivery_status,
+            'deliveryAddress': self.delivery_address,
+            'notes': self.notes,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() if self.updated_at else None
+        }
+
 
