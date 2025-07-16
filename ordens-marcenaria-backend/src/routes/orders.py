@@ -133,6 +133,20 @@ def update_order(current_user, order_id):
         if 'status' in data:
             order.status = data['status']
         
+        # Atualizar materiais se fornecidos
+        if 'materials' in data:
+            # Remover materiais existentes
+            Material.query.filter_by(order_id=order_id).delete()
+            
+            # Adicionar novos materiais
+            for material_data in data['materials']:
+                material = Material(
+                    description=material_data['description'],
+                    quantity=material_data.get('quantity', 1),
+                    order_id=order.id
+                )
+                db.session.add(material)
+        
         order.updated_at = datetime.utcnow()
         
         # Atualizar status automaticamente se não foi definido manualmente

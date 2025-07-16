@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog.jsx'
-import { Calendar, User, Package, Trash2, Plus, X } from 'lucide-react'
+import { Calendar, User, Package, Trash2, Plus, X, Eye, Edit } from 'lucide-react'
 
-export function OrderCard({ order, onUpdateOrder, onDeleteOrder, carpenters }) {
+export function OrderCard({ order, onUpdateOrder, onDeleteOrder, carpenters, onView, onEdit, canEdit }) {
   const [showMaterialsModal, setShowMaterialsModal] = useState(false)
   const [editingOrder, setEditingOrder] = useState(null)
   const [newMaterial, setNewMaterial] = useState({ description: '', quantity: 1 })
@@ -45,11 +45,26 @@ export function OrderCard({ order, onUpdateOrder, onDeleteOrder, carpenters }) {
     }))
   }
 
-  const saveMaterials = () => {
-    onUpdateOrder(editingOrder)
-    setShowMaterialsModal(false)
-    setEditingOrder(null)
-  }
+  const saveMaterials = async () => {
+    try {
+      // Garantir que os materiais tenham a estrutura correta
+      const materialsToSave = editingOrder.materials.map(material => ({
+        description: material.description,
+        quantity: material.quantity
+      }));
+
+      const updatedOrder = {
+        ...editingOrder,
+        materials: materialsToSave
+      };
+
+      await onUpdateOrder(updatedOrder);
+      setShowMaterialsModal(false);
+      setEditingOrder(null);
+    } catch (error) {
+      console.error('Erro ao salvar materiais:', error);
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -78,14 +93,39 @@ export function OrderCard({ order, onUpdateOrder, onDeleteOrder, carpenters }) {
       <div className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
         <div className="flex justify-between items-start mb-3">
           <h3 className="font-bold text-lg">{order.id}</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDeleteOrder(order.id)}
-            className="text-red-500 hover:text-red-700"
-          >
-            <Trash2 size={16} />
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onView && onView(order)}
+              className="text-blue-500 hover:text-blue-700"
+              title="Visualizar"
+            >
+              <Eye size={16} />
+            </Button>
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit && onEdit(order)}
+                className="text-green-500 hover:text-green-700"
+                title="Editar"
+              >
+                <Edit size={16} />
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDeleteOrder(order.id)}
+                className="text-red-500 hover:text-red-700"
+                title="Deletar"
+              >
+                <Trash2 size={16} />
+              </Button>
+            )}
+          </div>
         </div>
 
         <p className="text-gray-700 text-sm mb-3 line-clamp-2">{order.description}</p>

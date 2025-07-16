@@ -208,19 +208,16 @@ function OrderPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog, f
 
       const response = await ordersAPI.update(originalId, formattedData);
 
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === originalId
-            ? { ...order, ...updatedOrder }
-            : order
-        )
-      );
+      // Recarregar dados para garantir sincronização
+      await loadData(false);
 
       if (selectedOrderForView) {
         setIsEditMode(false);
-
-        const updatedOrderForView = { ...selectedOrderForView, ...updatedOrder };
-        setSelectedOrderForView(updatedOrderForView);
+        // Buscar a ordem atualizada dos dados recarregados
+        const updatedOrderFromServer = orders.find(o => o.id === originalId);
+        if (updatedOrderFromServer) {
+          setSelectedOrderForView(updatedOrderFromServer);
+        }
       }
 
       console.log('✅ Ordem atualizada localmente e no backend');
@@ -499,6 +496,9 @@ function OrderPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog, f
               carpenters={carpenters}
               onUpdateOrder={handleUpdateOrder}
               onDeleteOrder={handleDeleteOrder}
+              onView={handleViewOrder}
+              onEdit={handleEditOrder}
+              canEdit={canEdit()}
             />
           ))}
         </div>
@@ -521,6 +521,9 @@ function OrderPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog, f
                     carpenters={carpenters}
                     onUpdateOrder={handleUpdateOrder}
                     onDeleteOrder={handleDeleteOrder}
+                    onView={handleViewOrder}
+                    onEdit={handleEditOrder}
+                    canEdit={canEdit()}
                   />
                 ))}
               </div>
