@@ -1,19 +1,29 @@
 import axios from "axios";
 
+// URL do frontend deployado no Vercel (usar como base para buscar configuração global)
+const FRONTEND_BASE_URL = "https://ordens-marcenaria-app.vercel.app/"; // ❗ SUBSTITUA pela URL real do seu Vercel
+
 // Função para buscar a URL global do backend do servidor
 const getGlobalBackendUrl = async () => {
   try {
-    // Tentar buscar a URL global do servidor usando uma URL base conhecida
+    console.log("🌐 Buscando URL global do backend...");
+    
+    // Lista de URLs para tentar buscar a configuração global
+    // PRIORIDADE: Sempre tentar buscar do servidor primeiro
     const possibleUrls = [
+      // Se já temos uma URL salva, tentar ela primeiro para buscar a configuração
       localStorage.getItem("backendUrl"),
+      // URLs de fallback hardcoded (suas URLs ngrok atuais)
       "https://cef4-177-116-239-98.ngrok-free.app",
       "https://eee1aaa3647c.ngrok-free.app",
     ].filter(Boolean);
 
     for (const baseUrl of possibleUrls) {
       try {
+        console.log(`🔍 Tentando buscar configuração de: ${baseUrl}`);
+        
         const response = await axios.get(`${baseUrl}/api/system/config/backend-url`, {
-          timeout: 5000,
+          timeout: 8000, // Aumentar timeout
           headers: {
             "ngrok-skip-browser-warning": "true",
             "Accept": "application/json",
@@ -21,14 +31,15 @@ const getGlobalBackendUrl = async () => {
         });
 
         if (response.data.backend_url) {
-          console.log("🌐 URL global do backend encontrada:", response.data.backend_url);
+          console.log("✅ URL global do backend encontrada:", response.data.backend_url);
           return response.data.backend_url;
         }
       } catch (error) {
-        console.log(`❌ Não foi possível buscar configuração de ${baseUrl}`);
+        console.log(`❌ Não foi possível buscar configuração de ${baseUrl}:`, error.message);
       }
     }
 
+    console.log("⚠️ Nenhuma URL global encontrada");
     return null;
   } catch (error) {
     console.error("❌ Erro ao buscar URL global do backend:", error);
@@ -42,27 +53,41 @@ const getStoredBackendUrl = () => {
 
 const setStoredBackendUrl = (url) => {
   localStorage.setItem("backendUrl", url);
+  console.log("💾 URL salva no localStorage:", url);
 };
 
 // Inicializar com URL padrão
-let API_BASE_URL = "https://eee1aaa3647c.ngrok-free.app/api";
+let API_BASE_URL = "https://cef4-177-116-239-98.ngrok-free.app/api";
 
 // Função para inicializar a URL do backend (buscar configuração global)
 export const initializeBackendUrl = async () => {
   try {
+    console.log("🚀 Inicializando configuração do backend...");
+    
+    // SEMPRE tentar buscar a URL global primeiro
     const globalUrl = await getGlobalBackendUrl();
+    
     if (globalUrl) {
+      // URL global encontrada - usar ela
       API_BASE_URL = globalUrl.endsWith("/api") ? globalUrl : `${globalUrl}/api`;
       api.defaults.baseURL = API_BASE_URL;
       setStoredBackendUrl(globalUrl);
       console.log("🌐 URL do backend inicializada com configuração global:", API_BASE_URL);
+      
+      // Disparar evento para notificar outros componentes
+      window.dispatchEvent(
+        new CustomEvent("backendUrlChanged", {
+          detail: { newUrl: globalUrl, source: "global" },
+        })
+      );
+      
       return globalUrl;
     } else {
-      // Usar URL local se não conseguir buscar a global
+      // Não conseguiu buscar URL global - usar localStorage como fallback
       const localUrl = getStoredBackendUrl();
       API_BASE_URL = localUrl.endsWith("/api") ? localUrl : `${localUrl}/api`;
       api.defaults.baseURL = API_BASE_URL;
-      console.log("📱 Usando URL local do backend:", API_BASE_URL);
+      console.log("📱 Usando URL local do backend (fallback):", API_BASE_URL);
       return localUrl;
     }
   } catch (error) {
@@ -71,6 +96,39 @@ export const initializeBackendUrl = async () => {
     API_BASE_URL = fallbackUrl.endsWith("/api") ? fallbackUrl : `${fallbackUrl}/api`;
     api.defaults.baseURL = API_BASE_URL;
     return fallbackUrl;
+  }
+};
+
+// Função para verificar periodicamente se há nova URL no servidor
+export const checkForBackendUrlUpdates = async () => {
+  try {
+    const currentUrl = getCurrentBackendUrl();
+    const globalUrl = await getGlobalBackendUrl();
+    
+    if (globalUrl && globalUrl !== currentUrl) {
+      console.log("🔄 Nova URL detectada no servidor:", globalUrl);
+      console.log("📱 URL atual local:", currentUrl);
+      
+      // Atualizar para a nova URL
+      updateBackendUrl(globalUrl);
+      
+      // Disparar evento para notificar componentes
+      window.dispatchEvent(
+        new CustomEvent("backendUrlChanged", {
+          detail: { newUrl: globalUrl, source: "auto-update" },
+        })
+      );
+      
+      // Opcional: Mostrar notificação para o usuário
+      console.log("✅ URL do backend atualizada automaticamente!");
+      
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error("❌ Erro ao verificar atualizações da URL:", error);
+    return false;
   }
 };
 
@@ -92,7 +150,7 @@ const api = axios.create({
   },
 });
 
-// ADICIONAR função para atualizar a URL:
+// Função para atualizar a URL do backend
 export const updateBackendUrl = (newUrl) => {
   // Remover barra final se existir
   const cleanUrl = newUrl.replace(/\/$/, "");
@@ -100,6 +158,8 @@ export const updateBackendUrl = (newUrl) => {
   
   // Atualizar a baseURL do axios
   api.defaults.baseURL = cleanUrl + "/api";
+  
+  console.log("🔄 API baseURL atualizada para:", api.defaults.baseURL);
   
   return cleanUrl;
 };
@@ -110,11 +170,6 @@ export const getCurrentBackendUrl = () => {
 
 // Interceptador para adicionar token de autenticação
 api.interceptors.request.use((config) => {
-  console.log("🔍 Iniciando processo de login...");
-  console.log("🔍 Dados sendo enviados:", config.data);
-  console.log("🔍 Fazendo requisição para:", config.url);
-  console.log("🔍 Headers:", config.headers);
-  
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -132,16 +187,10 @@ api.interceptors.request.use((config) => {
 // Interceptador para tratar erros de autenticação e conexão
 api.interceptors.response.use(
   (response) => {
-    console.log("✅ Resposta recebida:", response.status, response.data);
     return response;
   },
   (error) => {
     console.error("❌ Erro na API:", error.response?.data || error.message);
-    console.log("❌ Erro capturado:", error);
-    console.log("❌ Erro response:", error.response);
-    console.log("❌ Erro message:", error.message);
-    console.log("❌ Erro code:", error.code);
-    console.log("❌ Erro config:", error.config);
     
     if (error.response?.status === 401) {
       // Token expirado ou inválido
@@ -289,3 +338,4 @@ export const systemConfigAPI = {
 };
 
 export default api;
+

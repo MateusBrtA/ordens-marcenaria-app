@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button.jsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog.jsx';
 import { LogOut, User, RefreshCw, Settings, Truck, LayoutGrid } from 'lucide-react';
 import { BackendUrlChanger } from './components/BackendUrlChanger';
-import OrderPage from './components/OrderPage.jsx'; // Importa a nova página de ordens
+import OrderPage from './components/OrderPage.jsx';
 import DeliveryPage from './components/DeliveryPage.jsx';
-import { initializeBackendUrl } from './services/api.js';
+import { initializeBackendUrl, checkForBackendUrlUpdates } from './services/api.js';
 import './App.css';
 
 function MainApp() {
   const { user, logout } = useAuth();
-  const [currentPage, setCurrentPage] = useState('orders'); // 'orders' ou 'deliveries'
+  const [currentPage, setCurrentPage] = useState('orders');
   const [dialog, setDialog] = useState({
     isOpen: false,
     title: '',
@@ -55,6 +55,54 @@ function MainApp() {
     return dateString;
   };
 
+  // Verificar periodicamente por atualizações da URL do backend
+  useEffect(() => {
+    const checkUrlUpdates = async () => {
+      try {
+        const wasUpdated = await checkForBackendUrlUpdates();
+        if (wasUpdated) {
+          console.log("🔄 URL do backend foi atualizada automaticamente");
+          // Opcional: Mostrar notificação para o usuário
+          // showCustomAlert("URL Atualizada", "A URL do backend foi atualizada automaticamente.");
+        }
+      } catch (error) {
+        console.error("❌ Erro ao verificar atualizações da URL:", error);
+      }
+    };
+
+    // Verificar imediatamente
+    checkUrlUpdates();
+
+    // Verificar a cada 30 segundos
+    const interval = setInterval(checkUrlUpdates, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Listener para mudanças na URL do backend
+  useEffect(() => {
+    const handleBackendUrlChange = (event) => {
+      if (event.detail && event.detail.newUrl) {
+        console.log("🔄 URL do backend alterada:", event.detail.newUrl);
+        console.log("📡 Fonte da alteração:", event.detail.source);
+        
+        // Se a alteração veio de uma atualização automática, mostrar notificação
+        if (event.detail.source === "auto-update") {
+          showCustomAlert(
+            "URL Atualizada", 
+            "A URL do backend foi atualizada automaticamente pelo administrador."
+          );
+        }
+      }
+    };
+
+    window.addEventListener("backendUrlChanged", handleBackendUrlChange);
+
+    return () => {
+      window.removeEventListener("backendUrlChanged", handleBackendUrlChange);
+    };
+  }, [showCustomAlert]);
+
   return (
     <div className="min-h-screen bg-gray-100 p-6 font-inter">
       <div className="text-center mb-8">
@@ -66,7 +114,7 @@ function MainApp() {
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
             <BackendUrlChanger variant="app" />
             <Button
-              onClick={() => window.location.reload()} // Simplesmente recarrega a página
+              onClick={() => window.location.reload()}
               variant="outline"
               size="sm"
               className="flex items-center gap-2"
@@ -196,5 +244,4 @@ function AppContent() {
 }
 
 export default App;
-
 
