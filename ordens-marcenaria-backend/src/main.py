@@ -26,7 +26,12 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Inicializar SQLAlchemy com a aplicação Flask
 db.init_app(app)
 
-CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+# CORS CORRIGIDO - Configuração mais específica para o Vercel
+CORS(app, 
+     resources={r"/api/*": {"origins": ["*"]}},
+     allow_headers=["Content-Type", "Authorization", "ngrok-skip-browser-warning", "Accept", "X-Requested-With"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     supports_credentials=True)
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
@@ -97,6 +102,15 @@ with app.app_context():
         print(f"Banco de dados localizado em: {database_path}")
     except Exception as e:
         print(f"Erro ao inicializar banco de dados: {e}")
+
+# Middleware para adicionar headers CORS manualmente (garantia extra)
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,ngrok-skip-browser-warning,Accept,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
