@@ -7,6 +7,7 @@ import { LogOut, User, RefreshCw, Settings, Truck, LayoutGrid } from 'lucide-rea
 import { BackendUrlChanger } from './components/BackendUrlChanger';
 import OrderPage from './components/OrderPage.jsx'; // Importa a nova página de ordens
 import DeliveryPage from './components/DeliveryPage.jsx';
+import { initializeBackendUrl } from './services/api.js';
 import './App.css';
 
 function MainApp() {
@@ -161,8 +162,26 @@ function App() {
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const [backendInitialized, setBackendInitialized] = useState(false);
 
-  if (loading) {
+  // Inicializar URL do backend ao carregar a aplicação
+  useEffect(() => {
+    const initBackend = async () => {
+      try {
+        console.log('🚀 Inicializando configuração global do backend...');
+        await initializeBackendUrl();
+        setBackendInitialized(true);
+        console.log('✅ Configuração do backend inicializada');
+      } catch (error) {
+        console.error('❌ Erro ao inicializar backend:', error);
+        setBackendInitialized(true); // Continuar mesmo com erro
+      }
+    };
+
+    initBackend();
+  }, []);
+
+  if (loading || !backendInitialized) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
@@ -177,3 +196,5 @@ function AppContent() {
 }
 
 export default App;
+
+

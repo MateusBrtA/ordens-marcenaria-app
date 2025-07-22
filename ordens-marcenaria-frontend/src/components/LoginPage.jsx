@@ -7,8 +7,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert.jsx'
 import { LogIn, UserPlus } from 'lucide-react'
 import api from '../services/api.js'
 import { BackendUrlChanger } from './BackendUrlChanger'
+import { useAuth } from '../contexts/AuthContext.jsx'
 
-export default function LoginPage({ onLogin }) {
+export default function LoginPage() {
+  const { login } = useAuth() // Usar o login do contexto de autenticação
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     username: '',
@@ -57,12 +59,12 @@ export default function LoginPage({ onLogin }) {
         localStorage.setItem('user', JSON.stringify(user))
         console.log('✅ Dados salvos no localStorage')
         
-        // Verificação de segurança antes de chamar onLogin
-        if (typeof onLogin === 'function') {
-          onLogin(user)
+        // Usar a função login do contexto de autenticação
+        if (typeof login === 'function') {
+          login(user)
           console.log('✅ Login concluído com sucesso')
         } else {
-          console.error('onLogin não é uma função válida. Recarregando a página.')
+          console.log('✅ Login concluído - recarregando página para atualizar estado')
           window.location.reload()
         }
       } else {

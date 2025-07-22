@@ -11,6 +11,8 @@ from src.routes.auth import auth_bp
 from src.routes.orders import orders_bp
 from src.routes.carpenters import carpenters_bp
 from src.routes.deliveries import deliveries_bp
+from src.models.user import db, User, Carpenter, SystemConfig
+from src.routes.system_config import system_config_bp
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'a1b9f7c3e8d2a6b0f4c5d9e1a7b8f3c2d6e0a9b4f8c1d5e7'
@@ -32,6 +34,7 @@ app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(orders_bp, url_prefix='/api')
 app.register_blueprint(carpenters_bp, url_prefix='/api')
 app.register_blueprint(deliveries_bp, url_prefix='/api')
+app.register_blueprint(system_config_bp, url_prefix="/api")
 
 def create_default_admin():
     """Cria usuário admin padrão se não existir"""

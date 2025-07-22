@@ -6,6 +6,59 @@ from datetime import datetime, timedelta
 
 db = SQLAlchemy()
 
+# Adicione esta classe no início do arquivo
+class SystemConfig(db.Model):
+    __tablename__ = "system_config"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.Text, nullable=False)
+    description = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey("user.id"))
+
+    def __repr__(self):
+        return f"<SystemConfig {self.key}: {self.value}>"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "key": self.key,
+            "value": self.value,
+            "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "updated_by": self.updated_by
+        }
+
+    @staticmethod
+    def get_config(key, default_value=None):
+        """Busca uma configuração pelo key"""
+        config = SystemConfig.query.filter_by(key=key).first()
+        return config.value if config else default_value
+
+    @staticmethod
+    def set_config(key, value, description=None, user_id=None):
+        """Define ou atualiza uma configuração"""
+        config = SystemConfig.query.filter_by(key=key).first()
+        if config:
+            config.value = value
+            config.updated_at = datetime.utcnow()
+            if user_id:
+                config.updated_by = user_id
+        else:
+            config = SystemConfig(
+                key=key,
+                value=value,
+                description=description,
+                updated_by=user_id
+            )
+            db.session.add(config)
+        
+        db.session.commit()
+        return config
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
