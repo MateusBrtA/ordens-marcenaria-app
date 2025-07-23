@@ -1,15 +1,33 @@
 import axios from "axios";
 
+// URL padrão que você pode alterar diretamente no código
+const DEFAULT_BACKEND_URL = "https://4fd78fa20571.ngrok-free.app";
+
 // Função para obter a URL do backend atual
 const getCurrentBackendUrl = () => {
-  // Primeiro, tentar obter da variável de ambiente do Vercel
+  // Prioridade:
+  // 1. URL manual do localStorage (BackendUrlChanger)
+  // 2. Variável de ambiente do Vercel
+  // 3. URL padrão definida no código
+  
+  const manualUrl = localStorage.getItem("backendUrl");
   const envUrl = import.meta.env.VITE_API_URL;
   
-  // Se não houver variável de ambiente, usar localStorage
-  const localUrl = localStorage.getItem("backendUrl");
+  // Se há URL manual no localStorage, ela tem prioridade máxima
+  if (manualUrl) {
+    console.log("📱 Usando URL manual do localStorage:", manualUrl);
+    return manualUrl;
+  }
   
-  // Prioridade: variável de ambiente > localStorage > null
-  return envUrl || localUrl || null;
+  // Se não há URL manual, usar variável de ambiente
+  if (envUrl) {
+    console.log("🌐 Usando URL da variável de ambiente:", envUrl);
+    return envUrl;
+  }
+  
+  // Fallback para URL padrão no código
+  console.log("🔧 Usando URL padrão do código:", DEFAULT_BACKEND_URL);
+  return DEFAULT_BACKEND_URL;
 };
 
 // Função para salvar a URL do backend
@@ -20,7 +38,7 @@ const setBackendUrl = (url) => {
   // Atualizar a baseURL do axios
   api.defaults.baseURL = cleanUrl + "/api";
   
-  console.log("🔄 URL do backend atualizada para:", cleanUrl);
+  console.log("🔄 URL do backend atualizada manualmente para:", cleanUrl);
   
   // Disparar evento para notificar outros componentes
   window.dispatchEvent(
@@ -32,12 +50,29 @@ const setBackendUrl = (url) => {
   return cleanUrl;
 };
 
+// Função para limpar URL manual e voltar ao padrão
+const clearManualBackendUrl = () => {
+  localStorage.removeItem("backendUrl");
+  const defaultUrl = getCurrentBackendUrl();
+  api.defaults.baseURL = defaultUrl + "/api";
+  
+  console.log("🧹 URL manual removida, voltando ao padrão:", defaultUrl);
+  
+  window.dispatchEvent(
+    new CustomEvent("backendUrlChanged", {
+      detail: { newUrl: defaultUrl, source: "reset" },
+    })
+  );
+  
+  return defaultUrl;
+};
+
 // Função para buscar a URL global do backend (simplificada)
 const getGlobalBackendUrl = async () => {
   const currentUrl = getCurrentBackendUrl();
   
   if (!currentUrl) {
-    console.log("⚠️ Nenhuma URL configurada localmente");
+    console.log("⚠️ Nenhuma URL configurada");
     return null;
   }
   
@@ -71,30 +106,32 @@ export const initializeBackendUrl = async () => {
     const currentUrl = getCurrentBackendUrl();
     
     if (!currentUrl) {
-      console.log("⚠️ Nenhuma URL configurada. Usuário precisa configurar manualmente.");
+      console.log("⚠️ Nenhuma URL configurada.");
       return null;
     }
     
-    // Se temos uma URL da variável de ambiente, usar ela diretamente
-    const envUrl = import.meta.env.VITE_API_URL;
-    if (envUrl) {
-      console.log("🌐 Usando URL da variável de ambiente:", envUrl);
-      api.defaults.baseURL = envUrl + "/api";
-      return envUrl;
+    // Configurar axios com a URL atual
+    api.defaults.baseURL = currentUrl + "/api";
+    console.log("✅ URL do backend configurada:", currentUrl);
+    
+    // Tentar buscar URL global apenas se não há URL manual
+    const manualUrl = localStorage.getItem("backendUrl");
+    if (!manualUrl) {
+      try {
+        const globalUrl = await getGlobalBackendUrl();
+        
+        if (globalUrl && globalUrl !== currentUrl) {
+          console.log("🔄 Atualizando para URL global:", globalUrl);
+          // Não salvar no localStorage para não interferir com configuração manual
+          api.defaults.baseURL = globalUrl + "/api";
+          return globalUrl;
+        }
+      } catch (error) {
+        console.log("⚠️ Não foi possível buscar URL global, usando URL atual");
+      }
     }
     
-    // Caso contrário, tentar buscar URL global apenas se já temos uma URL configurada
-    const globalUrl = await getGlobalBackendUrl();
-    
-    if (globalUrl && globalUrl !== currentUrl) {
-      console.log("🔄 Atualizando para URL global:", globalUrl);
-      setBackendUrl(globalUrl);
-      return globalUrl;
-    } else {
-      console.log("📱 Usando URL configurada:", currentUrl);
-      api.defaults.baseURL = currentUrl + "/api";
-      return currentUrl;
-    }
+    return currentUrl;
   } catch (error) {
     console.error("❌ Erro ao inicializar URL do backend:", error);
     return getCurrentBackendUrl();
@@ -104,9 +141,9 @@ export const initializeBackendUrl = async () => {
 // Função para verificar atualizações da URL (simplificada)
 export const checkForBackendUrlUpdates = async () => {
   try {
-    // Se temos variável de ambiente, não precisamos verificar atualizações
-    const envUrl = import.meta.env.VITE_API_URL;
-    if (envUrl) {
+    // Se há URL manual, não verificar atualizações automáticas
+    const manualUrl = localStorage.getItem("backendUrl");
+    if (manualUrl) {
       return false;
     }
     
@@ -120,7 +157,8 @@ export const checkForBackendUrlUpdates = async () => {
     
     if (globalUrl && globalUrl !== currentUrl) {
       console.log("🔄 Nova URL detectada:", globalUrl);
-      setBackendUrl(globalUrl);
+      // Não salvar no localStorage para não interferir com configuração manual
+      api.defaults.baseURL = globalUrl + "/api";
       return true;
     }
     
@@ -231,6 +269,6 @@ export const systemConfigAPI = {
 };
 
 // Exportar funções principais
-export { getCurrentBackendUrl, setBackendUrl };
+export { getCurrentBackendUrl, setBackendUrl, clearManualBackendUrl };
 export default api;
 
