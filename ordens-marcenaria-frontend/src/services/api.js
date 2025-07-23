@@ -2,7 +2,14 @@ import axios from "axios";
 
 // Função para obter a URL do backend atual
 const getCurrentBackendUrl = () => {
-  return localStorage.getItem("backendUrl") || null;
+  // Primeiro, tentar obter da variável de ambiente do Vercel
+  const envUrl = import.meta.env.VITE_API_URL;
+  
+  // Se não houver variável de ambiente, usar localStorage
+  const localUrl = localStorage.getItem("backendUrl");
+  
+  // Prioridade: variável de ambiente > localStorage > null
+  return envUrl || localUrl || null;
 };
 
 // Função para salvar a URL do backend
@@ -68,7 +75,15 @@ export const initializeBackendUrl = async () => {
       return null;
     }
     
-    // Tentar buscar URL global apenas se já temos uma URL configurada
+    // Se temos uma URL da variável de ambiente, usar ela diretamente
+    const envUrl = import.meta.env.VITE_API_URL;
+    if (envUrl) {
+      console.log("🌐 Usando URL da variável de ambiente:", envUrl);
+      api.defaults.baseURL = envUrl + "/api";
+      return envUrl;
+    }
+    
+    // Caso contrário, tentar buscar URL global apenas se já temos uma URL configurada
     const globalUrl = await getGlobalBackendUrl();
     
     if (globalUrl && globalUrl !== currentUrl) {
@@ -89,6 +104,12 @@ export const initializeBackendUrl = async () => {
 // Função para verificar atualizações da URL (simplificada)
 export const checkForBackendUrlUpdates = async () => {
   try {
+    // Se temos variável de ambiente, não precisamos verificar atualizações
+    const envUrl = import.meta.env.VITE_API_URL;
+    if (envUrl) {
+      return false;
+    }
+    
     const currentUrl = getCurrentBackendUrl();
     
     if (!currentUrl) {
@@ -110,9 +131,15 @@ export const checkForBackendUrlUpdates = async () => {
   }
 };
 
+// Função para obter URL inicial para o axios
+const getInitialUrl = () => {
+  const url = getCurrentBackendUrl();
+  return url ? url + "/api" : "http://localhost:5000/api";
+};
+
 // Criar instância do axios
 const api = axios.create({
-  baseURL: (getCurrentBackendUrl() || "http://localhost:5000") + "/api",
+  baseURL: getInitialUrl(),
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
