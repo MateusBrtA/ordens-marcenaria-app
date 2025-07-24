@@ -18,6 +18,7 @@ import { CardSizeSlider } from './CardSizeSlider';
 import { AdvancedFilters } from './AdvancedFilters';
 import { applyAdvancedFilters, clearAllFilters } from '../utils/filterUtils';
 import { OrderListView } from './OrderListView.jsx';
+import { WhatsAppMessageGenerator } from './WhatsAppMessageGenerator.jsx';
 
 function OrderPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog, formatDate }) {
   const [orders, setOrders] = useState([]);
@@ -104,6 +105,12 @@ function OrderPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog, f
       }
     }
   }, [showCustomAlert]);
+
+  // Função para atualizar dados (para o WhatsApp)
+  const handleRefreshData = useCallback(async () => {
+    console.log('🔄 Atualizando dados para WhatsApp...');
+    await loadData(false);
+  }, [loadData]);
 
   useEffect(() => {
     loadData();
@@ -390,6 +397,14 @@ function OrderPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog, f
           Exportar Excel
         </Button>
 
+        {/* Botão WhatsApp com função de atualização */}
+        <WhatsAppMessageGenerator 
+          data={orders} 
+          type="orders" 
+          formatDate={formatDate}
+          onRefreshData={handleRefreshData}
+        />
+
         <CardSizeSlider onSizeChange={handleCardSizeChange} />
 
         <AdvancedFilters onFiltersChange={setAdvancedFilters} currentFilters={advancedFilters} />
@@ -615,5 +630,4 @@ function OrderPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog, f
 }
 
 export default OrderPage;
-
 

@@ -12,6 +12,7 @@ import { Plus, FileSpreadsheet, LayoutGrid, List } from 'lucide-react';
 import { CardSizeSlider } from './CardSizeSlider';
 import { AdvancedFilters } from './AdvancedFilters';
 import { applyAdvancedFilters, clearAllFilters } from '../utils/filterUtils';
+import { WhatsAppMessageGenerator } from './WhatsAppMessageGenerator.jsx';
 
 function DeliveryPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog, formatDate, dialog }) {
     const [deliveries, setDeliveries] = useState([]);
@@ -84,6 +85,12 @@ function DeliveryPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog
             }
         }
     }, [showCustomAlert]);
+
+    // Função para atualizar dados (para o WhatsApp)
+    const handleRefreshData = useCallback(async () => {
+        console.log('🔄 Atualizando dados para WhatsApp...');
+        await loadData(false);
+    }, [loadData]);
 
     useEffect(() => {
         loadData();
@@ -275,6 +282,14 @@ function DeliveryPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog
                     Exportar Excel
                 </Button>
 
+                {/* Botão WhatsApp com função de atualização */}
+                <WhatsAppMessageGenerator 
+                    data={deliveries} 
+                    type="deliveries" 
+                    formatDate={formatDate}
+                    onRefreshData={handleRefreshData}
+                />
+
                 <CardSizeSlider onSizeChange={handleCardSizeChange} />
 
                 <AdvancedFilters onFiltersChange={setAdvancedFilters} currentFilters={advancedFilters} />
@@ -427,5 +442,4 @@ function DeliveryPage({ canEdit, showCustomAlert, showCustomConfirm, closeDialog
 }
 
 export default DeliveryPage;
-
 
