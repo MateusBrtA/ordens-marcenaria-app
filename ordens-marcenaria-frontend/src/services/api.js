@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // URL padrão que você pode alterar diretamente no código
-const DEFAULT_BACKEND_URL = "https://4fd78fa20571.ngrok-free.app";
+const DEFAULT_BACKEND_URL = "https://611300632a31.ngrok-free.app";
 
 // Função para obter a URL do backend atual
 const getCurrentBackendUrl = () => {
